@@ -1,0 +1,19 @@
+name: 'Rebase'
+description: 'Rebase pull requests in a repository'
+inputs:
+  token:
+    description: 'GitHub auth token'
+    default: ${{ github.token }}
+  repository:
+    description: 'The target GitHub repository'
+    default: ${{ github.repository }}
+  base:
+    description: 'Filter pull requests to a specific base branch'
+  head:
+    description: 'Filter pull requests to a specific head branch'
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
+branding:
+  icon: 'git-pull-request'
+  color: 'gray-dark'

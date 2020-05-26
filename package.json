@@ -1,0 +1,50 @@
+{
+  "name": "rebase",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Rebase pull requests in a repository",
+  "main": "lib/main.js",
+  "scripts": {
+    "build": "tsc && ncc build",
+    "format": "prettier --write '**/*.ts'",
+    "format-check": "prettier --check '**/*.ts'",
+    "lint": "eslint src/**/*.ts",
+    "test:unit": "jest unit",
+    "test:int": "__test__/integration-tests.sh",
+    "test": "npm run test:unit && npm run test:int"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/peter-evans/rebase.git"
+  },
+  "keywords": [
+    "actions",
+    "pull",
+    "rebase"
+  ],
+  "author": "Peter Evans",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/peter-evans/rebase/issues"
+  },
+  "homepage": "https://github.com/peter-evans/rebase",
+  "dependencies": {
+    "@actions/core": "1.2.4",
+    "@actions/exec": "1.0.4"
+  },
+  "devDependencies": {
+    "@types/jest": "25.2.2",
+    "@types/node": "14.0.1",
+    "@typescript-eslint/parser": "2.33.0",
+    "@zeit/ncc": "0.22.1",
+    "eslint": "7.0.0",
+    "eslint-plugin-github": "3.4.1",
+    "eslint-plugin-jest": "23.11.0",
+    "jest": "26.0.1",
+    "jest-circus": "26.0.1",
+    "js-yaml": "3.13.1",
+    "prettier": "2.0.5",
+    "ts-jest": "25.5.1",
+    "typescript": "3.9.2"
+  }
+}
