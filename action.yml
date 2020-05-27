@@ -4,8 +4,9 @@ inputs:
   token:
     description: 'GitHub auth token'
     default: ${{ github.token }}
-  path:
-    description: 'Relative path under github.workspace to the repository.'
+  repository:
+    description: 'The target GitHub repository'
+    default: ${{ github.repository }}
   base:
     description: 'Filter pull requests to a specific base branch'
   head:

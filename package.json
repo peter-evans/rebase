@@ -5,6 +5,7 @@
   "description": "Rebase pull requests in a repository",
   "main": "lib/main.js",
   "scripts": {
+    "build-checkout": "npm install --prefix node_modules/checkout && npm run build --prefix node_modules/checkout",
     "build": "tsc && ncc build",
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
@@ -30,7 +31,9 @@
   "homepage": "https://github.com/peter-evans/rebase",
   "dependencies": {
     "@actions/core": "1.2.4",
-    "@actions/exec": "1.0.4"
+    "@actions/exec": "1.0.4",
+    "@actions/github": "2.1.1",
+    "checkout": "github:actions/checkout#v2.1.1"
   },
   "devDependencies": {
     "@types/jest": "25.2.2",

@@ -19,6 +19,7 @@ jobs:
         with:
           node-version: 12.x
       - run: npm ci
+      - run: npm run build-checkout
       - run: npm run build
       - run: npm run format-check
       - run: npm run lint
@@ -45,8 +46,10 @@ jobs:
           name: dist
           path: dist
 
-      - name: Test action
-        run: exit 0
+      - name: Rebase
+        uses: ./
+        with:
+          base: blah
 
   package:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
