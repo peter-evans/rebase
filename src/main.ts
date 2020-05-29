@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
-import * as inputHelper from 'checkout/lib/input-helper'
-import * as gitSourceProvider from 'checkout/lib/git-source-provider'
+import {RebaseablePullsHelper} from './rebaseable-pulls-helper'
+import {RebaseHelper} from './rebase-helper'
 import {inspect} from 'util'
 
 async function run(): Promise<void> {
@@ -8,20 +8,30 @@ async function run(): Promise<void> {
     const inputs = {
       token: core.getInput('token'),
       repository: core.getInput('repository'),
-      base: core.getInput('base'),
-      head: core.getInput('head')
+      head: core.getInput('head') != '' ? core.getInput('head') : undefined,
+      base: core.getInput('base') != '' ? core.getInput('base') : undefined
     }
     core.debug(`Inputs: ${inspect(inputs)}`)
 
-    process.env['INPUT_PATH'] = 'somepath'
-    process.env['INPUT_REF'] = 'master'
-    process.env['INPUT_FETCH-DEPTH'] = '0'
-    process.env['INPUT_PERSIST_CREDENTIALS'] = 'true'
+    // Get rebaseable pulls
+    const rebaseablePullsHelper = new RebaseablePullsHelper(inputs.token)
+    const rebaseablePulls = await rebaseablePullsHelper.get(
+      inputs.repository,
+      inputs.head,
+      inputs.base
+    )
 
-    const sourceSettings = inputHelper.getInputs()
-    core.debug(`sourceSettings: ${inspect(sourceSettings)}`)
+    if (rebaseablePulls.length > 0) {
+      core.info('Rebaseable pull requests found.')
 
-    await gitSourceProvider.getSource(sourceSettings)
+      const rebaseHelper = await RebaseHelper.create()
+
+      for (const rebaseablePull of rebaseablePulls) {
+        await rebaseHelper.rebase(rebaseablePull)
+      }
+    } else {
+      core.info('No rebaseable pull requests found.')
+    }
   } catch (error) {
     core.setFailed(error.message)
   }

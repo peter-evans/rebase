@@ -5,6 +5,7 @@
   "description": "Rebase pull requests in a repository",
   "main": "lib/main.js",
   "scripts": {
+    "clean": "rm -rf node_modules package-lock.json",
     "build-checkout": "npm install --prefix node_modules/checkout && npm run build --prefix node_modules/checkout",
     "build": "tsc && ncc build",
     "format": "prettier --write '**/*.ts'",
@@ -33,11 +34,12 @@
     "@actions/core": "1.2.4",
     "@actions/exec": "1.0.4",
     "@actions/github": "2.1.1",
-    "checkout": "github:actions/checkout#v2.1.1"
+    "checkout": "github:peter-evans/checkout#master-ext",
+    "uuid": "8.1.0"
   },
   "devDependencies": {
     "@types/jest": "25.2.2",
-    "@types/node": "14.0.1",
+    "@types/node": "14.0.5",
     "@typescript-eslint/parser": "2.33.0",
     "@zeit/ncc": "0.22.1",
     "eslint": "7.0.0",
