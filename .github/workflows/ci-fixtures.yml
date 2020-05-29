@@ -2,8 +2,8 @@ name: CI Fixtures
 on:
   push:
     branches:
-      - test-fixtures/built/head-1
-      - test-fixtures/committed/head-1
+      - 'test-fixtures/built/head-1'
+      - 'test-fixtures/committed/head-1'
 
 jobs:
   fixtures:
