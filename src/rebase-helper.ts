@@ -16,6 +16,7 @@ export class RebaseHelper {
 
   static async create(): Promise<RebaseHelper> {
     // Additional inputs needed by checkout
+    // TODO: change path and delete afterwards
     process.env['INPUT_PATH'] = 'somepath'
     process.env['INPUT_REF'] = 'master'
     process.env['INPUT_FETCH-DEPTH'] = '0'
@@ -57,7 +58,7 @@ export class RebaseHelper {
     )
     core.endGroup()
 
-    // Set a default git user
+    // TODO: input for the committer
     await this.git.config('user.email', 'you@example.com')
     await this.git.config('user.name', 'Your Name')
 

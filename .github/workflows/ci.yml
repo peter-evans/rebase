@@ -46,11 +46,11 @@ jobs:
           name: dist
           path: dist
 
-      - name: Rebase
-        uses: ./
-        with:
-          token: ${{ secrets.ACTIONS_BOT_TOKEN }}
-          base: test-fixtures/${{ matrix.target }}/base
+      # - name: Rebase
+      #   uses: ./
+      #   with:
+      #     token: ${{ secrets.ACTIONS_BOT_TOKEN }}
+      #     base: test-fixtures/${{ matrix.target }}/base
 
   package:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
