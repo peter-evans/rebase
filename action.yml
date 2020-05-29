@@ -7,10 +7,14 @@ inputs:
   repository:
     description: 'The target GitHub repository'
     default: ${{ github.repository }}
-  base:
-    description: 'Filter pull requests to a specific base branch'
   head:
-    description: 'Filter pull requests to a specific head branch'
+    description: >
+      Filter pull requests by head user or head organization and branch name in the format of user:ref-name or organization:ref-name.
+      Example: peter-evans:test-branch or actions:patch-1
+  base:
+    description: >
+      Filter pulls by base branch name.
+      Example: master
 runs:
   using: 'node12'
   main: 'dist/index.js'

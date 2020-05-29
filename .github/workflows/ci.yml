@@ -39,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          ref: master
+          ref: test-fixtures/${{ matrix.target }}/base
       - if: matrix.target == 'built' || github.event_name == 'pull_request'
         uses: actions/download-artifact@v2
         with:
@@ -49,7 +49,8 @@ jobs:
       - name: Rebase
         uses: ./
         with:
-          base: blah
+          token: ${{ secrets.ACTIONS_BOT_TOKEN }}
+          base: test-fixtures/${{ matrix.target }}/base
 
   package:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
