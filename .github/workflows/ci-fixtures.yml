@@ -1,9 +1,9 @@
 name: CI Fixtures
-on:
-  push:
-    branches:
-      - 'test-fixtures/built/head-1'
-      - 'test-fixtures/committed/head-1'
+on: push
+#   push:
+#     branches:
+#       - 'test-fixtures/built/head-1'
+#       - 'test-fixtures/committed/head-1'
 
 jobs:
   fixtures:
@@ -18,11 +18,11 @@ jobs:
         with:
           ref: test-fixtures/committed/base
 
-      - name: Push a change to the base for the next run
-        run: |
-          date +%s > change-on-base.txt
-          git config --global user.name 'Nobody'
-          git config --global user.email '6813509382@users.noreply.github.com'
-          git add change-on-base.txt
-          git commit -m "Change on base"
-          git push
+    #   - name: Push a change to the base for the next run
+    #     run: |
+    #       date +%s > change-on-base.txt
+    #       git config --global user.name 'Nobody'
+    #       git config --global user.email '6813509382@users.noreply.github.com'
+    #       git add change-on-base.txt
+    #       git commit -m "Change on base"
+    #       git push
