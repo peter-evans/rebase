@@ -65,7 +65,7 @@ jobs:
         with:
           token: ${{ secrets.ACTIONS_BOT_TOKEN }}
           repository: peter-evans/rebase-test-fixture
-          head: peter-evans:test-fixtures/${{ matrix.target }}/1/head
+          head: test-fixtures/${{ matrix.target }}/1/head
 
   package:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
