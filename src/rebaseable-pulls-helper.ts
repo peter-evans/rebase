@@ -1,54 +1,62 @@
 import * as core from '@actions/core'
-import * as github from '@actions/github'
+import {graphql} from '@octokit/graphql'
+import {graphql as Graphql} from '@octokit/graphql/dist-types/types'
+import * as OctokitTypes from '@octokit/types'
 import {inspect} from 'util'
 
 export class RebaseablePullsHelper {
-  octokit: github.GitHub
+  graphqlClient: Graphql
 
   constructor(token: string) {
-    this.octokit = new github.GitHub(token)
+    this.graphqlClient = graphql.defaults({
+      headers: {
+        authorization: `token ${token}`,
+        accept: 'application/vnd.github.merge-info-preview+json'
+      }
+    })
   }
 
   async get(
     repository: string,
-    head?: string,
-    base?: string
+    head: string,
+    base: string
   ): Promise<RebaseablePull[]> {
     const [owner, repo] = repository.split('/')
-    const {data: pulls} = await this.octokit.pulls.list({
+    const params: OctokitTypes.RequestParameters = {
       owner: owner,
-      repo: repo,
-      state: 'open',
-      head: head,
-      base: base
-    })
-    core.debug(`Pulls: ${inspect(pulls)}`)
-
-    const getPullResults = await Promise.allSettled(
-      pulls.map(async pull => {
-        return await this.octokit.pulls.get({
-          owner: owner,
-          repo: repo,
-          pull_number: pull.number
-        })
-      })
-    )
-    core.debug(`getPullResults: ${inspect(getPullResults)}`)
-
-    for (let i = 0, l = getPullResults.length; i < l; i++) {
-      if (getPullResults[i].status === 'rejected') {
-        core.warning(`Fetching '${pulls[i].url}' failed.`)
-      }
+      repo: repo
     }
+    if (head.length > 0) params.head = head
+    if (base.length > 0) params.base = base
+    const query = `query Pulls($owner: String!, $repo: String!, $head: String, $base: String) {
+      repository(owner:$owner, name:$repo) {
+        pullRequests(first: 100, states: OPEN, headRefName: $head, baseRefName: $base) {
+          edges {
+            node {
+              id
+              baseRefName
+              headRefName
+              headRepository {
+                nameWithOwner
+                url
+              }
+              canBeRebased
+            }
+          }
+        }
+      }
+    }`
+    const pulls = await this.graphqlClient<Pulls>(query, params)
+    core.debug(`Pulls: ${inspect(pulls.repository.pullRequests.edges)}`)
 
-    const rebaseablePulls = getPullResults
+    const rebaseablePulls = pulls.repository.pullRequests.edges
       .map(p => {
-        if (p.status === 'fulfilled' && p.value.data.rebaseable) {
+        if (p.node.canBeRebased) {
           return new RebaseablePull(
-            p.value.data.base.ref,
-            p.value.data.head.repo.html_url,
-            p.value.data.head.repo.full_name,
-            p.value.data.head.ref
+            p.node.baseRefName,
+            p.node.headRepository.url,
+            p.node.headRepository.nameWithOwner,
+            p.node.headRefName
           )
         }
       })
@@ -56,6 +64,27 @@ export class RebaseablePullsHelper {
     core.debug(`rebaseablePulls: ${inspect(rebaseablePulls)}`)
 
     return rebaseablePulls
+  }
+}
+
+type Edge = {
+  node: {
+    id: string
+    baseRefName: string
+    headRefName: string
+    headRepository: {
+      nameWithOwner: string
+      url: string
+    }
+    canBeRebased: boolean
+  }
+}
+
+type Pulls = {
+  repository: {
+    pullRequests: {
+      edges: Edge[]
+    }
   }
 }
 
