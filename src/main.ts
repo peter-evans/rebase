@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import {RebaseablePullsHelper} from './rebaseable-pulls-helper'
 import {RebaseHelper} from './rebase-helper'
+import assert from 'assert'
 import {inspect} from 'util'
 
 async function run(): Promise<void> {
@@ -8,12 +9,19 @@ async function run(): Promise<void> {
     const inputs = {
       token: core.getInput('token'),
       repository: core.getInput('repository'),
+      committer: core.getInput('committer'),
       head: core.getInput('head'),
       base: core.getInput('base')
     }
     core.debug(`Inputs: ${inspect(inputs)}`)
 
-    // Get rebaseable pulls
+    const matches = inputs.committer.match(/^([^<]+)\s*<([^>]+)>$/)
+    assert(
+      matches,
+      `Input 'committer' does not conform to the format 'Your Name <you@example.com>'`
+    )
+    const [, committerName, committerEmail] = matches
+
     const rebaseablePullsHelper = new RebaseablePullsHelper(inputs.token)
     const rebaseablePulls = await rebaseablePullsHelper.get(
       inputs.repository,
@@ -24,7 +32,10 @@ async function run(): Promise<void> {
     if (rebaseablePulls.length > 0) {
       core.info('Rebaseable pull requests found.')
 
-      const rebaseHelper = await RebaseHelper.create()
+      const rebaseHelper = await RebaseHelper.create(
+        committerName,
+        committerEmail
+      )
 
       for (const rebaseablePull of rebaseablePulls) {
         await rebaseHelper.rebase(rebaseablePull)

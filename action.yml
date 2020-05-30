@@ -7,14 +7,13 @@ inputs:
   repository:
     description: 'The target GitHub repository'
     default: ${{ github.repository }}
+  committer:
+    description: 'The committer name and email address.'
+    default: GitHub <noreply@github.com>
   head:
-    description: >
-      Filter pull requests by head user or head organization and branch name in the format of user:ref-name or organization:ref-name.
-      Example: peter-evans:test-branch or actions:patch-1
+    description: 'Filter pull requests by head branch name'
   base:
-    description: >
-      Filter pulls by base branch name.
-      Example: master
+    description: 'Filter pull requests by base branch name'
 runs:
   using: 'node12'
   main: 'dist/index.js'

@@ -2149,10 +2149,12 @@ const uuid_1 = __webpack_require__(62);
 const util_1 = __webpack_require__(669);
 class RebaseHelper {
     // Private constructor; use create()
-    constructor(git) {
+    constructor(git, committerName, committerEmail) {
         this.git = git;
+        this.committerName = committerName;
+        this.committerEmail = committerEmail;
     }
-    static create() {
+    static create(committerName, committerEmail) {
         return __awaiter(this, void 0, void 0, function* () {
             // Additional inputs needed by checkout
             // TODO: change path and delete afterwards
@@ -2166,7 +2168,7 @@ class RebaseHelper {
             yield gitSourceProvider.getSource(sourceSettings);
             // Create a git command manager
             const git = yield gitCommandManager.createCommandManager(sourceSettings.repositoryPath, sourceSettings.lfs);
-            return new RebaseHelper(git);
+            return new RebaseHelper(git, committerName, committerEmail);
         });
     }
     rebase(rebaseablePull) {
@@ -2184,9 +2186,9 @@ class RebaseHelper {
             const localRef = uuid_1.v4();
             yield this.git.checkout(localRef, `refs/remotes/${remoteName}/${rebaseablePull.headRef}`);
             core.endGroup();
-            // TODO: input for the committer
-            yield this.git.config('user.email', 'you@example.com');
-            yield this.git.config('user.name', 'Your Name');
+            // Set the committer
+            yield this.git.config('user.name', this.committerName);
+            yield this.git.config('user.email', this.committerEmail);
             // Rebase
             core.startGroup(`Rebasing on base ref '${rebaseablePull.baseRef}'`);
             const rebased = yield this.git.rebase('origin', rebaseablePull.baseRef);
@@ -16998,10 +17000,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(__webpack_require__(470));
 const rebaseable_pulls_helper_1 = __webpack_require__(873);
 const rebase_helper_1 = __webpack_require__(51);
+const assert_1 = __importDefault(__webpack_require__(357));
 const util_1 = __webpack_require__(669);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -17009,16 +17015,19 @@ function run() {
             const inputs = {
                 token: core.getInput('token'),
                 repository: core.getInput('repository'),
+                committer: core.getInput('committer'),
                 head: core.getInput('head'),
                 base: core.getInput('base')
             };
             core.debug(`Inputs: ${util_1.inspect(inputs)}`);
-            // Get rebaseable pulls
+            const matches = inputs.committer.match(/^([^<]+)\s*<([^>]+)>$/);
+            assert_1.default(matches, `Input 'committer' does not conform to the format 'Your Name <you@example.com>'`);
+            const [, committerName, committerEmail] = matches;
             const rebaseablePullsHelper = new rebaseable_pulls_helper_1.RebaseablePullsHelper(inputs.token);
             const rebaseablePulls = yield rebaseablePullsHelper.get(inputs.repository, inputs.head, inputs.base);
             if (rebaseablePulls.length > 0) {
                 core.info('Rebaseable pull requests found.');
-                const rebaseHelper = yield rebase_helper_1.RebaseHelper.create();
+                const rebaseHelper = yield rebase_helper_1.RebaseHelper.create(committerName, committerEmail);
                 for (const rebaseablePull of rebaseablePulls) {
                     yield rebaseHelper.rebase(rebaseablePull);
                 }

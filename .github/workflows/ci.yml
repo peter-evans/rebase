@@ -58,7 +58,7 @@ jobs:
         with:
           token: ${{ secrets.ACTIONS_BOT_TOKEN }}
           repository: peter-evans/rebase-test-fixture-${{ matrix.target }}
-          base: test-fixtures/1/base
+          base: test-fixtures/2/base
 
       - name: Rebase
         uses: ./

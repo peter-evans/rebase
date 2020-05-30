@@ -8,13 +8,24 @@ import {inspect} from 'util'
 
 export class RebaseHelper {
   private git: gitCommandManager.IGitCommandManager
+  private committerName: string
+  private committerEmail: string
 
   // Private constructor; use create()
-  private constructor(git: gitCommandManager.IGitCommandManager) {
+  private constructor(
+    git: gitCommandManager.IGitCommandManager,
+    committerName: string,
+    committerEmail: string
+  ) {
     this.git = git
+    this.committerName = committerName
+    this.committerEmail = committerEmail
   }
 
-  static async create(): Promise<RebaseHelper> {
+  static async create(
+    committerName: string,
+    committerEmail: string
+  ): Promise<RebaseHelper> {
     // Additional inputs needed by checkout
     // TODO: change path and delete afterwards
     process.env['INPUT_PATH'] = 'somepath'
@@ -32,7 +43,7 @@ export class RebaseHelper {
       sourceSettings.repositoryPath,
       sourceSettings.lfs
     )
-    return new RebaseHelper(git)
+    return new RebaseHelper(git, committerName, committerEmail)
   }
 
   async rebase(rebaseablePull: RebaseablePull): Promise<void> {
@@ -58,9 +69,9 @@ export class RebaseHelper {
     )
     core.endGroup()
 
-    // TODO: input for the committer
-    await this.git.config('user.email', 'you@example.com')
-    await this.git.config('user.name', 'Your Name')
+    // Set the committer
+    await this.git.config('user.name', this.committerName)
+    await this.git.config('user.email', this.committerEmail)
 
     // Rebase
     core.startGroup(`Rebasing on base ref '${rebaseablePull.baseRef}'`)
@@ -70,7 +81,7 @@ export class RebaseHelper {
     if (rebased) {
       core.info(`Pushing changes to head ref '${rebaseablePull.headRef}'`)
       const options = ['--force-with-lease']
-      //await this.git.push(remoteName, `HEAD:${rebaseablePull.headRef}`, options)
+      await this.git.push(remoteName, `HEAD:${rebaseablePull.headRef}`, options)
     } else {
       core.info(
         `Head ref '${rebaseablePull.headRef}' is already up to date with the base`
