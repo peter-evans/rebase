@@ -1,49 +1,21 @@
 import * as core from '@actions/core'
-import * as inputHelper from 'checkout/lib/input-helper'
-import * as gitSourceProvider from 'checkout/lib/git-source-provider'
-import * as gitCommandManager from 'checkout/lib/git-command-manager'
+import {IGitCommandManager} from 'checkout/lib/git-command-manager'
 import {RebaseablePull} from './rebaseable-pulls-helper'
 import {v4 as uuidv4} from 'uuid'
-import {inspect} from 'util'
 
 export class RebaseHelper {
-  private git: gitCommandManager.IGitCommandManager
+  private git: IGitCommandManager
   private committerName: string
   private committerEmail: string
 
-  // Private constructor; use create()
-  private constructor(
-    git: gitCommandManager.IGitCommandManager,
+  constructor(
+    git: IGitCommandManager,
     committerName: string,
     committerEmail: string
   ) {
     this.git = git
     this.committerName = committerName
     this.committerEmail = committerEmail
-  }
-
-  static async create(
-    committerName: string,
-    committerEmail: string
-  ): Promise<RebaseHelper> {
-    // Additional inputs needed by checkout
-    // TODO: change path and delete afterwards
-    process.env['INPUT_PATH'] = 'somepath'
-    process.env['INPUT_REF'] = 'master'
-    process.env['INPUT_FETCH-DEPTH'] = '0'
-    process.env['INPUT_PERSIST-CREDENTIALS'] = 'true'
-    const sourceSettings = inputHelper.getInputs()
-    core.debug(`sourceSettings: ${inspect(sourceSettings)}`)
-
-    // Checkout
-    await gitSourceProvider.getSource(sourceSettings)
-
-    // Create a git command manager
-    const git = await gitCommandManager.createCommandManager(
-      sourceSettings.repositoryPath,
-      sourceSettings.lfs
-    )
-    return new RebaseHelper(git, committerName, committerEmail)
   }
 
   async rebase(rebaseablePull: RebaseablePull): Promise<void> {
