@@ -8,8 +8,8 @@ async function run(): Promise<void> {
     const inputs = {
       token: core.getInput('token'),
       repository: core.getInput('repository'),
-      head: core.getInput('head') != '' ? core.getInput('head') : undefined,
-      base: core.getInput('base') != '' ? core.getInput('base') : undefined
+      head: core.getInput('head'),
+      base: core.getInput('base')
     }
     core.debug(`Inputs: ${inspect(inputs)}`)
 

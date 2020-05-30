@@ -70,7 +70,7 @@ export class RebaseHelper {
     if (rebased) {
       core.info(`Pushing changes to head ref '${rebaseablePull.headRef}'`)
       const options = ['--force-with-lease']
-      await this.git.push(remoteName, `HEAD:${rebaseablePull.headRef}`, options)
+      //await this.git.push(remoteName, `HEAD:${rebaseablePull.headRef}`, options)
     } else {
       core.info(
         `Head ref '${rebaseablePull.headRef}' is already up to date with the base`

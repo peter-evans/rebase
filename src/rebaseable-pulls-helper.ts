@@ -1,27 +1,34 @@
 import * as core from '@actions/core'
-import * as github from '@actions/github'
+import {Octokit} from '@octokit/rest'
 import {inspect} from 'util'
 
+// Using multiple plugins
+// https://github.com/octokit/rest.js/issues/1624#issuecomment-601436499
+
 export class RebaseablePullsHelper {
-  octokit: github.GitHub
+  octokit: Octokit
 
   constructor(token: string) {
-    this.octokit = new github.GitHub(token)
+    this.octokit = new Octokit({
+      auth: token
+    })
   }
 
   async get(
     repository: string,
-    head?: string,
-    base?: string
+    head: string,
+    base: string
   ): Promise<RebaseablePull[]> {
     const [owner, repo] = repository.split('/')
-    const {data: pulls} = await this.octokit.pulls.list({
+    const params: Octokit.PullsListParams = {
       owner: owner,
       repo: repo,
       state: 'open',
-      head: head,
-      base: base
-    })
+      per_page: 100
+    }
+    if (head.length > 0) params.head = head
+    if (base.length > 0) params.base = base
+    const {data: pulls} = await this.octokit.pulls.list(params)
     core.debug(`Pulls: ${inspect(pulls)}`)
 
     const getPullResults = await Promise.allSettled(

@@ -33,7 +33,7 @@
   "dependencies": {
     "@actions/core": "1.2.4",
     "@actions/exec": "1.0.4",
-    "@actions/github": "2.1.1",
+    "@octokit/rest": "16.43.1",
     "checkout": "github:peter-evans/checkout#master-ext",
     "uuid": "8.1.0"
   },
