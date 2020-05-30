@@ -33,6 +33,7 @@
   "dependencies": {
     "@actions/core": "1.2.4",
     "@actions/exec": "1.0.4",
+    "@actions/io": "1.0.2",
     "@octokit/graphql": "4.5.0",
     "checkout": "github:peter-evans/checkout#master-ext",
     "uuid": "8.1.0"
