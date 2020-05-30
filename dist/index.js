@@ -2781,6 +2781,7 @@ function run() {
                     yield rebaseHelper.rebase(rebaseablePull);
                 }
                 // Delete the repository
+                core.debug(`Removing repo at '${sourceSettings.repositoryPath}'`);
                 yield io.rmRF(sourceSettings.repositoryPath);
             }
             else {

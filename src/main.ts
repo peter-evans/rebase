@@ -58,6 +58,7 @@ async function run(): Promise<void> {
       }
 
       // Delete the repository
+      core.debug(`Removing repo at '${sourceSettings.repositoryPath}'`)
       await io.rmRF(sourceSettings.repositoryPath)
     } else {
       core.info('No rebaseable pull requests found.')
