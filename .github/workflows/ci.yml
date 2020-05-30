@@ -46,26 +46,25 @@ jobs:
           name: dist
           path: dist
 
-      - name: Rebase
+      - name: Rebase with head filter
         uses: ./
         with:
           token: ${{ secrets.ACTIONS_BOT_TOKEN }}
-          #head: peter-evans:test-fixtures/${{ matrix.target }}/1/head
-          base: master
+          repository: peter-evans/rebase-test-fixture-${{ matrix.target }}
+          head: test-fixtures/1/head
+
+      - name: Rebase with base filter
+        uses: ./
+        with:
+          token: ${{ secrets.ACTIONS_BOT_TOKEN }}
+          repository: peter-evans/rebase-test-fixture-${{ matrix.target }}
+          base: test-fixtures/1/base
 
       - name: Rebase
         uses: ./
         with:
           token: ${{ secrets.ACTIONS_BOT_TOKEN }}
-          repository: peter-evans/rebase-test-fixture
-          #head: peter-evans:test-fixtures/${{ matrix.target }}/1/head
-
-      - name: Rebase
-        uses: ./
-        with:
-          token: ${{ secrets.ACTIONS_BOT_TOKEN }}
-          repository: peter-evans/rebase-test-fixture
-          head: test-fixtures/${{ matrix.target }}/1/head
+          repository: peter-evans/rebase-test-fixture-${{ matrix.target }}
 
   package:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
