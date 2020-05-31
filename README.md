@@ -28,12 +28,12 @@ jobs:
 
 ### Filter target pull requests
 
-This example only targets pull requests where the head branch is `my-feature` and head user `peter-evans`.
+This example only targets pull requests where the head branch is `my-feature` and head org `my-org`.
 
 ```yml
       - uses: peter-evans/rebase@v1
         with:
-          head: peter-evans:my-feature
+          head: my-org:my-feature
 ```
 
 This example only targets pull requests where the base branch is `master`. 
