@@ -23,7 +23,7 @@ jobs:
       - run: npm run build
       - run: npm run format-check
       - run: npm run lint
-      # - run: npm run test
+      - run: npm run test
       - uses: actions/upload-artifact@v2
         with:
           name: dist
@@ -60,7 +60,7 @@ jobs:
         with:
           token: ${{ secrets.ACTIONS_BOT_TOKEN }}
           repository: peter-evans/rebase-test-fixture-${{ matrix.target }}
-          head: test-fixtures/1/head
+          head: peter-evans:test-fixtures/1/head
 
       - name: Rebase with base filter
         uses: ./

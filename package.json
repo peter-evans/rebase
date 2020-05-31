@@ -11,9 +11,7 @@
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
     "lint": "eslint src/**/*.ts",
-    "test:unit": "jest unit",
-    "test:int": "__test__/integration-tests.sh",
-    "test": "npm run test:unit && npm run test:int"
+    "test": "jest unit"
   },
   "repository": {
     "type": "git",
@@ -32,7 +30,6 @@
   "homepage": "https://github.com/peter-evans/rebase",
   "dependencies": {
     "@actions/core": "1.2.4",
-    "@actions/exec": "1.0.4",
     "@actions/io": "1.0.2",
     "@octokit/graphql": "4.5.0",
     "checkout": "github:peter-evans/checkout#master-ext",

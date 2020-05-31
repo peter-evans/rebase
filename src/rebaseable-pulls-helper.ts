@@ -19,6 +19,7 @@ export class RebaseablePullsHelper {
   async get(
     repository: string,
     head: string,
+    headOwner: string,
     base: string
   ): Promise<RebaseablePull[]> {
     const [owner, repo] = repository.split('/')
@@ -33,12 +34,14 @@ export class RebaseablePullsHelper {
         pullRequests(first: 100, states: OPEN, headRefName: $head, baseRefName: $base) {
           edges {
             node {
-              id
               baseRefName
               headRefName
               headRepository {
                 nameWithOwner
                 url
+              }
+              headRepositoryOwner {
+                login
               }
               canBeRebased
             }
@@ -51,7 +54,11 @@ export class RebaseablePullsHelper {
 
     const rebaseablePulls = pulls.repository.pullRequests.edges
       .map(p => {
-        if (p.node.canBeRebased) {
+        if (
+          p.node.canBeRebased &&
+          (headOwner.length == 0 ||
+            p.node.headRepositoryOwner.login == headOwner)
+        ) {
           return new RebaseablePull(
             p.node.baseRefName,
             p.node.headRepository.url,
@@ -69,12 +76,14 @@ export class RebaseablePullsHelper {
 
 type Edge = {
   node: {
-    id: string
     baseRefName: string
     headRefName: string
     headRepository: {
       nameWithOwner: string
       url: string
+    }
+    headRepositoryOwner: {
+      login: string
     }
     canBeRebased: boolean
   }
