@@ -26,7 +26,7 @@ jobs:
       - uses: peter-evans/rebase@v1
 ```
 
-### Filter target pull requests
+#### Filter target pull requests
 
 This example only targets pull requests where the head branch is `my-feature` and head org `my-org`.
 
@@ -95,8 +95,8 @@ jobs:
 | `token` | `GITHUB_TOKEN` or a `repo` scoped [PAT](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line). | `GITHUB_TOKEN` |
 | `repository` | The target GitHub repository containing the pull request. | `github.repository` (Current repository) |
 | `committer` | The committer name and email address in the format `Display Name <email@address.com>`. | `GitHub <noreply@github.com>` |
-| `head` | Filter pull requests by head user or head organization and branch name in the format user:ref-name or organization:ref-name. For example: github:new-script-format or octocat:test-branch. | |
-| `base` | Filter pull requests by base branch name. Example: gh-pages. | |
+| `head` | Filter pull requests by head user or head organization and branch name in the format `user:ref-name` or `organization:ref-name`. For example: `github:new-script-format` or `octocat:test-branch`. | |
+| `base` | Filter pull requests by base branch name. Example: `gh-pages`. | |
 
 ### Target other repositories
 
