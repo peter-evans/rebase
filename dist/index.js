@@ -5360,27 +5360,27 @@ function hasLastPage (link) {
 /***/ }),
 
 /***/ 339:
-/***/ (function(__unusedmodule, exports, __webpack_require__) {
+/***/ (function(__unusedmodule, exports) {
 
 "use strict";
 
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseHead = exports.parseCommitter = void 0;
-const assert_1 = __importDefault(__webpack_require__(357));
 function parseCommitter(committer) {
     const matches = committer.match(/^([^<]+)\s*<([^>]+)>$/);
-    assert_1.default(matches, `Input 'committer' does not conform to the format 'Display Name <email@address.com>'`);
+    if (!matches) {
+        throw `Input 'committer' does not conform to the format 'Display Name <email@address.com>'`;
+    }
     const [, name, email] = matches;
-    return [name, email];
+    return [name.trim(), email];
 }
 exports.parseCommitter = parseCommitter;
 function parseHead(head) {
     if (head.length > 0) {
         const [headOwner, headRef] = head.split(':');
-        assert_1.default(headRef, `Input 'head' does not conform to the format 'user:ref-name' or 'organization:ref-name'`);
+        if (!headRef) {
+            throw `Input 'head' does not conform to the format 'user:ref-name' or 'organization:ref-name'`;
+        }
         return [headOwner, headRef];
     }
     else {
