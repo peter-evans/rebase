@@ -23,7 +23,7 @@ jobs:
       - run: npm run build
       - run: npm run format-check
       - run: npm run lint
-      # - run: npm run test
+      - run: npm run test
       - uses: actions/upload-artifact@v2
         with:
           name: dist
