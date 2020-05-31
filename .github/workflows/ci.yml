@@ -60,7 +60,7 @@ jobs:
         with:
           token: ${{ secrets.ACTIONS_BOT_TOKEN }}
           repository: peter-evans/rebase-test-fixture-${{ matrix.target }}
-          head: test-fixtures/1/head
+          head: peter-evans:test-fixtures/1/head
 
       - name: Rebase with base filter
         uses: ./

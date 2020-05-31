@@ -11,9 +11,13 @@ inputs:
     description: 'The committer name and email address.'
     default: GitHub <noreply@github.com>
   head:
-    description: 'Filter pull requests by head branch name'
+    description: >
+      Filter pull requests by head user or head organization and branch name in the format user:ref-name or organization:ref-name.
+      For example: github:new-script-format or octocat:test-branch.
   base:
-    description: 'Filter pull requests by base branch name'
+    description: >
+      Filter pull requests by base branch name.
+      Example: gh-pages.
 runs:
   using: 'node12'
   main: 'dist/index.js'

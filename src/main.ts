@@ -3,9 +3,9 @@ import * as io from '@actions/io'
 import * as inputHelper from 'checkout/lib/input-helper'
 import * as gitSourceProvider from 'checkout/lib/git-source-provider'
 import * as gitCommandManager from 'checkout/lib/git-command-manager'
+import * as inputValidator from './input-validator'
 import {RebaseablePullsHelper} from './rebaseable-pulls-helper'
 import {RebaseHelper} from './rebase-helper'
-import assert from 'assert'
 import {inspect} from 'util'
 import {v4 as uuidv4} from 'uuid'
 
@@ -20,17 +20,16 @@ async function run(): Promise<void> {
     }
     core.debug(`Inputs: ${inspect(inputs)}`)
 
-    const matches = inputs.committer.match(/^([^<]+)\s*<([^>]+)>$/)
-    assert(
-      matches,
-      `Input 'committer' does not conform to the format 'Your Name <you@example.com>'`
+    const [committerName, committerEmail] = inputValidator.parseCommitter(
+      inputs.committer
     )
-    const [, committerName, committerEmail] = matches
+    const [headOwner, head] = inputValidator.parseHead(inputs.head)
 
     const rebaseablePullsHelper = new RebaseablePullsHelper(inputs.token)
     const rebaseablePulls = await rebaseablePullsHelper.get(
       inputs.repository,
-      inputs.head,
+      head,
+      headOwner,
       inputs.base
     )
 
