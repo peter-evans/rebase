@@ -29,22 +29,20 @@ jobs:
       - uses: peter-evans/rebase@v1
 ```
 
-#### Filter target pull requests
-
-Use the `base` input to only target pull requests with a specific base branch.
+### Rebase all pull requests on push to the base branch
 
 ```yml
+name: Rebase
+on:
+  push:
+    branches: [master]
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
       - uses: peter-evans/rebase@v1
         with:
           base: master
-```
-
-Use the `head` input to only target pull requests with a specific head branch. It must be prefixed with the head user or head organization.
-
-```yml
-      - uses: peter-evans/rebase@v1
-        with:
-          head: my-org:my-feature
 ```
 
 ### Rebase slash command
