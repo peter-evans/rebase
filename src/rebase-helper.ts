@@ -34,11 +34,13 @@ export class RebaseHelper {
     core.endGroup()
 
     // Get/set the committer
+    core.startGroup(`Setting the committer to the HEAD commit committer`)
     const sha = await this.git.revParse('HEAD')
     const committerName = await this.git.log1([`--format='%cn'`, sha])
     const committerEmail = await this.git.log1([`--format='%ce'`, sha])
     await this.git.config('user.name', committerName)
     await this.git.config('user.email', committerEmail)
+    core.endGroup()
 
     // Rebase
     core.startGroup(`Rebasing on base ref '${rebaseablePull.baseRef}'`)

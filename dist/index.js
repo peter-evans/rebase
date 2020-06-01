@@ -4016,11 +4016,13 @@ class RebaseHelper {
             yield this.git.checkout(localRef, `refs/remotes/${remoteName}/${rebaseablePull.headRef}`);
             core.endGroup();
             // Get/set the committer
+            core.startGroup(`Setting the committer to the HEAD commit committer`);
             const sha = yield this.git.revParse('HEAD');
             const committerName = yield this.git.log1([`--format='%cn'`, sha]);
             const committerEmail = yield this.git.log1([`--format='%ce'`, sha]);
             yield this.git.config('user.name', committerName);
             yield this.git.config('user.email', committerEmail);
+            core.endGroup();
             // Rebase
             core.startGroup(`Rebasing on base ref '${rebaseablePull.baseRef}'`);
             const rebased = yield this.git.rebase('origin', rebaseablePull.baseRef);
