@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          persist-credentials: false
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
       - uses: actions/setup-node@v1
         with:
           node-version: 12.x
