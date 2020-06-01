@@ -6,13 +6,16 @@ A GitHub action to rebase pull requests in a repository.
 
 ## Usage
 
+The default, with no configured inputs, is for the action to check the current repository for rebaseable pull requests and rebase them.
+Pull requests from forks are rebaseable only if they [allow edits from maintainers](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/allowing-changes-to-a-pull-request-branch-created-from-a-fork).
+
 ```yml
       - uses: peter-evans/rebase@v1
 ```
 
 ### Periodically rebase all pull requests
 
-This example workflow schedules the action to check once a day for rebaseable pull requests and rebase them.
+The simplest way to use this action is to schedule it to run periodically.
 
 ```yml
 name: Rebase
@@ -28,7 +31,7 @@ jobs:
 
 #### Filter target pull requests
 
-This example only targets pull requests where the base branch is `master`. 
+Use the `base` input to only target pull requests with a specific base branch.
 
 ```yml
       - uses: peter-evans/rebase@v1
@@ -36,7 +39,7 @@ This example only targets pull requests where the base branch is `master`.
           base: master
 ```
 
-This example only targets pull requests where the head branch is `my-feature`. It must be prefixed with the head user or head organization.
+Use the `head` input to only target pull requests with a specific head branch. It must be prefixed with the head user or head organization.
 
 ```yml
       - uses: peter-evans/rebase@v1
