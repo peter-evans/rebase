@@ -44,6 +44,7 @@ export class RebaseablePullsHelper {
                 login
               }
               canBeRebased
+              maintainerCanModify
             }
           }
         }
@@ -56,8 +57,12 @@ export class RebaseablePullsHelper {
       .map(p => {
         if (
           p.node.canBeRebased &&
+          // Filter on head owner since the query only filters on head ref
           (headOwner.length == 0 ||
-            p.node.headRepositoryOwner.login == headOwner)
+            p.node.headRepositoryOwner.login == headOwner) &&
+          // Filter heads from forks where 'maintainer can modify' is false
+          (p.node.headRepositoryOwner.login == owner ||
+            p.node.maintainerCanModify)
         ) {
           return new RebaseablePull(
             p.node.baseRefName,
@@ -86,6 +91,7 @@ type Edge = {
       login: string
     }
     canBeRebased: boolean
+    maintainerCanModify: boolean
   }
 }
 
