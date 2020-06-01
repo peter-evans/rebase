@@ -33,7 +33,8 @@
     "@actions/io": "1.0.2",
     "@octokit/graphql": "4.5.0",
     "checkout": "github:peter-evans/checkout#master-ext",
-    "uuid": "8.1.0"
+    "uuid": "8.1.0",
+    "is-docker": "github:peter-evans/is-docker"
   },
   "devDependencies": {
     "@types/jest": "25.2.2",
