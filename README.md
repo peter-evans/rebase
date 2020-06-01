@@ -28,20 +28,20 @@ jobs:
 
 #### Filter target pull requests
 
-This example only targets pull requests where the head branch is `my-feature` and head org `my-org`.
-
-```yml
-      - uses: peter-evans/rebase@v1
-        with:
-          head: my-org:my-feature
-```
-
 This example only targets pull requests where the base branch is `master`. 
 
 ```yml
       - uses: peter-evans/rebase@v1
         with:
           base: master
+```
+
+This example only targets pull requests where the head branch is `my-feature`. It must be prefixed with the head user or head organization.
+
+```yml
+      - uses: peter-evans/rebase@v1
+        with:
+          head: my-org:my-feature
 ```
 
 ### Rebase slash command
@@ -61,7 +61,7 @@ jobs:
       - name: Slash Command Dispatch
         uses: peter-evans/slash-command-dispatch@v1
         with:
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          token: ${{ secrets.PAT }}
           commands: rebase
           permission: write
           issue-type: pull-request
@@ -82,7 +82,7 @@ jobs:
       - name: Add reaction
         uses: peter-evans/create-or-update-comment@v1
         with:
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          token: ${{ secrets.PAT }}
           repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
           comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
           reaction-type: hooray
@@ -100,7 +100,7 @@ jobs:
 
 ### Target other repositories
 
-You can rebase requests in another repository by using a [PAT](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line) instead of `GITHUB_TOKEN`.
+You can rebase requests in another repository by using a `repo` scoped [PAT](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line) instead of `GITHUB_TOKEN`.
 The user associated with the PAT must have write access to the repository.
 
 This example targets multiple repositories.
@@ -119,7 +119,7 @@ jobs:
     steps:
       - uses: peter-evans/rebase@v1
         with:
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          token: ${{ secrets.PAT }}
           repository: ${{ matrix.repo }}
 ```
 
