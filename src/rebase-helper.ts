@@ -5,17 +5,9 @@ import {v4 as uuidv4} from 'uuid'
 
 export class RebaseHelper {
   private git: IGitCommandManager
-  private committerName: string
-  private committerEmail: string
 
-  constructor(
-    git: IGitCommandManager,
-    committerName: string,
-    committerEmail: string
-  ) {
+  constructor(git: IGitCommandManager) {
     this.git = git
-    this.committerName = committerName
-    this.committerEmail = committerEmail
   }
 
   async rebase(rebaseablePull: RebaseablePull): Promise<void> {
@@ -41,9 +33,12 @@ export class RebaseHelper {
     )
     core.endGroup()
 
-    // Set the committer
-    await this.git.config('user.name', this.committerName)
-    await this.git.config('user.email', this.committerEmail)
+    // Get/set the committer
+    const sha = await this.git.revParse('HEAD')
+    const committerName = await this.git.log1([`--format='%cn'`, sha])
+    const committerEmail = await this.git.log1([`--format='%ce'`, sha])
+    await this.git.config('user.name', committerName)
+    await this.git.config('user.email', committerEmail)
 
     // Rebase
     core.startGroup(`Rebasing on base ref '${rebaseablePull.baseRef}'`)
