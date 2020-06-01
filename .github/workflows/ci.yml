@@ -18,6 +18,8 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: 12.x
+      - run: |
+          git config --global url."https://${{ secrets.REPO_ACCESS_TOKEN }}@github.com/".insteadOf ssh://git@github.com/
       - run: npm ci
       - run: npm run build-checkout
       - run: npm run build
