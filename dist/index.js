@@ -4000,20 +4000,20 @@ class RebaseHelper {
     constructor(git) {
         this.git = git;
     }
-    rebase(rebaseablePull) {
+    rebase(pull) {
         return __awaiter(this, void 0, void 0, function* () {
-            core.info(`Starting rebase of head ref '${rebaseablePull.headRef}' at '${rebaseablePull.headRepoName}'`);
+            core.info(`Starting rebase of head ref '${pull.headRef}' at '${pull.headRepoName}'`);
             // Add head remote
             const remoteName = uuid_1.v4();
-            yield this.git.remoteAdd(remoteName, rebaseablePull.headRepoUrl);
+            yield this.git.remoteAdd(remoteName, pull.headRepoUrl);
             // Fetch
-            core.startGroup(`Fetching head ref '${rebaseablePull.headRef}'`);
-            yield this.git.fetch([rebaseablePull.headRef], 0, remoteName);
+            core.startGroup(`Fetching head ref '${pull.headRef}'`);
+            yield this.git.fetch([pull.headRef], 0, remoteName);
             core.endGroup();
             // Checkout
-            core.startGroup(`Checking out head ref '${rebaseablePull.headRef}'`);
+            core.startGroup(`Checking out head ref '${pull.headRef}'`);
             const localRef = uuid_1.v4();
-            yield this.git.checkout(localRef, `refs/remotes/${remoteName}/${rebaseablePull.headRef}`);
+            yield this.git.checkout(localRef, `refs/remotes/${remoteName}/${pull.headRef}`);
             core.endGroup();
             // Get/set the committer
             core.startGroup(`Setting the committer to the HEAD commit committer`);
@@ -4024,16 +4024,16 @@ class RebaseHelper {
             yield this.git.config('user.email', committerEmail);
             core.endGroup();
             // Rebase
-            core.startGroup(`Rebasing on base ref '${rebaseablePull.baseRef}'`);
-            const rebased = yield this.tryRebase('origin', rebaseablePull.baseRef);
+            core.startGroup(`Rebasing on base ref '${pull.baseRef}'`);
+            const rebased = yield this.tryRebase('origin', pull.baseRef);
             core.endGroup();
             if (rebased) {
-                core.info(`Pushing changes to head ref '${rebaseablePull.headRef}'`);
+                core.info(`Pushing changes to head ref '${pull.headRef}'`);
                 const options = ['--force-with-lease'];
-                yield this.git.push(remoteName, `HEAD:${rebaseablePull.headRef}`, options);
+                yield this.git.push(remoteName, `HEAD:${pull.headRef}`, options);
             }
             else {
-                core.info(`Head ref '${rebaseablePull.headRef}' is already up to date with the base`);
+                core.info(`Head ref '${pull.headRef}' is already up to date with the base`);
             }
         });
     }
@@ -18958,7 +18958,7 @@ const inputHelper = __importStar(__webpack_require__(932));
 const gitSourceProvider = __importStar(__webpack_require__(547));
 const gitCommandManager = __importStar(__webpack_require__(524));
 const inputValidator = __importStar(__webpack_require__(339));
-const rebaseable_pulls_helper_1 = __webpack_require__(873);
+const pulls_helper_1 = __webpack_require__(867);
 const rebase_helper_1 = __webpack_require__(51);
 const util_1 = __webpack_require__(669);
 const uuid_1 = __webpack_require__(62);
@@ -18973,10 +18973,10 @@ function run() {
             };
             core.debug(`Inputs: ${util_1.inspect(inputs)}`);
             const [headOwner, head] = inputValidator.parseHead(inputs.head);
-            const rebaseablePullsHelper = new rebaseable_pulls_helper_1.RebaseablePullsHelper(inputs.token);
-            const rebaseablePulls = yield rebaseablePullsHelper.get(inputs.repository, head, headOwner, inputs.base);
-            if (rebaseablePulls.length > 0) {
-                core.info('Rebaseable pull requests found.');
+            const pullsHelper = new pulls_helper_1.PullsHelper(inputs.token);
+            const pulls = yield pullsHelper.get(inputs.repository, head, headOwner, inputs.base);
+            if (pulls.length > 0) {
+                core.info(`${pulls.length} pull request(s) found.`);
                 // Checkout
                 const path = uuid_1.v4();
                 process.env['INPUT_PATH'] = path;
@@ -18989,15 +18989,15 @@ function run() {
                 // Rebase
                 const git = yield gitCommandManager.createCommandManager(sourceSettings.repositoryPath, sourceSettings.lfs);
                 const rebaseHelper = new rebase_helper_1.RebaseHelper(git);
-                for (const rebaseablePull of rebaseablePulls) {
-                    yield rebaseHelper.rebase(rebaseablePull);
+                for (const pull of pulls) {
+                    yield rebaseHelper.rebase(pull);
                 }
                 // Delete the repository
                 core.debug(`Removing repo at '${sourceSettings.repositoryPath}'`);
                 yield io.rmRF(sourceSettings.repositoryPath);
             }
             else {
-                core.info('No rebaseable pull requests found.');
+                core.info('No pull requests found.');
             }
         }
         catch (error) {
@@ -37184,7 +37184,7 @@ module.exports = function (str) {
 
 /***/ }),
 
-/***/ 873:
+/***/ 867:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -37218,11 +37218,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RebaseablePull = exports.RebaseablePullsHelper = void 0;
+exports.Pull = exports.PullsHelper = void 0;
 const core = __importStar(__webpack_require__(470));
 const graphql_1 = __webpack_require__(898);
 const util_1 = __webpack_require__(669);
-class RebaseablePullsHelper {
+class PullsHelper {
     constructor(token) {
         this.graphqlClient = graphql_1.graphql.defaults({
             headers: {
@@ -37263,7 +37263,7 @@ class RebaseablePullsHelper {
     }`;
             const pulls = yield this.graphqlClient(query, params);
             core.debug(`Pulls: ${util_1.inspect(pulls.repository.pullRequests.edges)}`);
-            const rebaseablePulls = pulls.repository.pullRequests.edges
+            const filteredPulls = pulls.repository.pullRequests.edges
                 .map(p => {
                 if (
                 // Filter on head owner since the query only filters on head ref
@@ -37272,17 +37272,17 @@ class RebaseablePullsHelper {
                     // Filter heads from forks where 'maintainer can modify' is false
                     (p.node.headRepositoryOwner.login == owner ||
                         p.node.maintainerCanModify)) {
-                    return new RebaseablePull(p.node.baseRefName, p.node.headRepository.url, p.node.headRepository.nameWithOwner, p.node.headRefName);
+                    return new Pull(p.node.baseRefName, p.node.headRepository.url, p.node.headRepository.nameWithOwner, p.node.headRefName);
                 }
             })
                 .filter(notUndefined);
-            core.debug(`rebaseablePulls: ${util_1.inspect(rebaseablePulls)}`);
-            return rebaseablePulls;
+            core.debug(`filteredPulls: ${util_1.inspect(filteredPulls)}`);
+            return filteredPulls;
         });
     }
 }
-exports.RebaseablePullsHelper = RebaseablePullsHelper;
-class RebaseablePull {
+exports.PullsHelper = PullsHelper;
+class Pull {
     constructor(baseRef, headRepoUrl, headRepoName, headRef) {
         this.baseRef = baseRef;
         this.headRepoUrl = headRepoUrl;
@@ -37290,7 +37290,7 @@ class RebaseablePull {
         this.headRef = headRef;
     }
 }
-exports.RebaseablePull = RebaseablePull;
+exports.Pull = Pull;
 function notUndefined(x) {
     return x !== undefined;
 }

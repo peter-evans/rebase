@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import {IGitCommandManager} from 'checkout/lib/git-command-manager'
-import {RebaseablePull} from './rebaseable-pulls-helper'
+import {Pull} from './pulls-helper'
 import {v4 as uuidv4} from 'uuid'
 
 export class RebaseHelper {
@@ -10,26 +10,26 @@ export class RebaseHelper {
     this.git = git
   }
 
-  async rebase(rebaseablePull: RebaseablePull): Promise<void> {
+  async rebase(pull: Pull): Promise<void> {
     core.info(
-      `Starting rebase of head ref '${rebaseablePull.headRef}' at '${rebaseablePull.headRepoName}'`
+      `Starting rebase of head ref '${pull.headRef}' at '${pull.headRepoName}'`
     )
 
     // Add head remote
     const remoteName = uuidv4()
-    await this.git.remoteAdd(remoteName, rebaseablePull.headRepoUrl)
+    await this.git.remoteAdd(remoteName, pull.headRepoUrl)
 
     // Fetch
-    core.startGroup(`Fetching head ref '${rebaseablePull.headRef}'`)
-    await this.git.fetch([rebaseablePull.headRef], 0, remoteName)
+    core.startGroup(`Fetching head ref '${pull.headRef}'`)
+    await this.git.fetch([pull.headRef], 0, remoteName)
     core.endGroup()
 
     // Checkout
-    core.startGroup(`Checking out head ref '${rebaseablePull.headRef}'`)
+    core.startGroup(`Checking out head ref '${pull.headRef}'`)
     const localRef = uuidv4()
     await this.git.checkout(
       localRef,
-      `refs/remotes/${remoteName}/${rebaseablePull.headRef}`
+      `refs/remotes/${remoteName}/${pull.headRef}`
     )
     core.endGroup()
 
@@ -43,17 +43,17 @@ export class RebaseHelper {
     core.endGroup()
 
     // Rebase
-    core.startGroup(`Rebasing on base ref '${rebaseablePull.baseRef}'`)
-    const rebased = await this.tryRebase('origin', rebaseablePull.baseRef)
+    core.startGroup(`Rebasing on base ref '${pull.baseRef}'`)
+    const rebased = await this.tryRebase('origin', pull.baseRef)
     core.endGroup()
 
     if (rebased) {
-      core.info(`Pushing changes to head ref '${rebaseablePull.headRef}'`)
+      core.info(`Pushing changes to head ref '${pull.headRef}'`)
       const options = ['--force-with-lease']
-      await this.git.push(remoteName, `HEAD:${rebaseablePull.headRef}`, options)
+      await this.git.push(remoteName, `HEAD:${pull.headRef}`, options)
     } else {
       core.info(
-        `Head ref '${rebaseablePull.headRef}' is already up to date with the base`
+        `Head ref '${pull.headRef}' is already up to date with the base`
       )
     }
   }

@@ -4,7 +4,7 @@ import {graphql as Graphql} from '@octokit/graphql/dist-types/types'
 import * as OctokitTypes from '@octokit/types'
 import {inspect} from 'util'
 
-export class RebaseablePullsHelper {
+export class PullsHelper {
   graphqlClient: Graphql
 
   constructor(token: string) {
@@ -20,7 +20,7 @@ export class RebaseablePullsHelper {
     head: string,
     headOwner: string,
     base: string
-  ): Promise<RebaseablePull[]> {
+  ): Promise<Pull[]> {
     const [owner, repo] = repository.split('/')
     const params: OctokitTypes.RequestParameters = {
       owner: owner,
@@ -51,7 +51,7 @@ export class RebaseablePullsHelper {
     const pulls = await this.graphqlClient<Pulls>(query, params)
     core.debug(`Pulls: ${inspect(pulls.repository.pullRequests.edges)}`)
 
-    const rebaseablePulls = pulls.repository.pullRequests.edges
+    const filteredPulls = pulls.repository.pullRequests.edges
       .map(p => {
         if (
           // Filter on head owner since the query only filters on head ref
@@ -61,7 +61,7 @@ export class RebaseablePullsHelper {
           (p.node.headRepositoryOwner.login == owner ||
             p.node.maintainerCanModify)
         ) {
-          return new RebaseablePull(
+          return new Pull(
             p.node.baseRefName,
             p.node.headRepository.url,
             p.node.headRepository.nameWithOwner,
@@ -70,9 +70,9 @@ export class RebaseablePullsHelper {
         }
       })
       .filter(notUndefined)
-    core.debug(`rebaseablePulls: ${inspect(rebaseablePulls)}`)
+    core.debug(`filteredPulls: ${inspect(filteredPulls)}`)
 
-    return rebaseablePulls
+    return filteredPulls
   }
 }
 
@@ -99,7 +99,7 @@ type Pulls = {
   }
 }
 
-export class RebaseablePull {
+export class Pull {
   baseRef: string
   headRepoUrl: string
   headRepoName: string
