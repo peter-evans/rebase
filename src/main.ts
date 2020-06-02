@@ -48,9 +48,14 @@ async function run(): Promise<void> {
         sourceSettings.lfs
       )
       const rebaseHelper = new RebaseHelper(git)
+      let rebasedCount = 0
       for (const pull of pulls) {
-        await rebaseHelper.rebase(pull)
+        const result = await rebaseHelper.rebase(pull)
+        if (result) rebasedCount++
       }
+
+      // Output count of successful rebases
+      core.setOutput('rebased-count', rebasedCount)
 
       // Delete the repository
       core.debug(`Removing repo at '${sourceSettings.repositoryPath}'`)

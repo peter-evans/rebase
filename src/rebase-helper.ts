@@ -10,7 +10,7 @@ export class RebaseHelper {
     this.git = git
   }
 
-  async rebase(pull: Pull): Promise<void> {
+  async rebase(pull: Pull): Promise<boolean> {
     core.info(
       `Attempting rebase of head ref '${pull.headRef}' at '${pull.headRepoName}'.`
     )
@@ -49,25 +49,24 @@ export class RebaseHelper {
     const result = await this.tryRebase('origin', pull.baseRef)
     core.endGroup()
 
-    // Push options
-    const options = ['--force-with-lease']
-
-    switch (result) {
-      case RebaseResult.Rebased:
-        core.info(`Pushing changes to head ref '${pull.headRef}'`)
-        await this.git.push(remoteName, `HEAD:${pull.headRef}`, options)
-        core.info(`Head ref '${pull.headRef}' successfully rebased.`)
-        break
-      case RebaseResult.AlreadyUpToDate:
-        core.info(
-          `Head ref '${pull.headRef}' is already up to date with the base.`
-        )
-        break
-      case RebaseResult.Failed:
-        core.info('Rebase failed. Conflicts must be resolved manually.')
-        break
-      default:
+    if (result == RebaseResult.Rebased) {
+      core.startGroup(`Pushing changes to head ref '${pull.headRef}'`)
+      const options = ['--force-with-lease']
+      await this.git.push(remoteName, `HEAD:${pull.headRef}`, options)
+      core.endGroup()
+      core.info(`Head ref '${pull.headRef}' successfully rebased.`)
+      return true
+    } else if (result == RebaseResult.AlreadyUpToDate) {
+      core.info(
+        `Head ref '${pull.headRef}' is already up to date with the base.`
+      )
+    } else if (result == RebaseResult.Failed) {
+      core.info(
+        `Rebase of head ref '${pull.headRef}' failed. Conflicts must be resolved manually.`
+      )
     }
+
+    return false
   }
 
   private async tryRebase(
