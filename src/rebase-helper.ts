@@ -44,7 +44,7 @@ export class RebaseHelper {
 
     // Rebase
     core.startGroup(`Rebasing on base ref '${rebaseablePull.baseRef}'`)
-    const rebased = await this.git.rebase('origin', rebaseablePull.baseRef)
+    const rebased = await this.tryRebase('origin', rebaseablePull.baseRef)
     core.endGroup()
 
     if (rebased) {
@@ -55,6 +55,15 @@ export class RebaseHelper {
       core.info(
         `Head ref '${rebaseablePull.headRef}' is already up to date with the base`
       )
+    }
+  }
+
+  private async tryRebase(remoteName: string, ref: string): Promise<boolean> {
+    try {
+      return await this.git.rebase(remoteName, ref)
+    } catch {
+      core.info('Automatic rebase failed. Conflicts must be resolved manually.')
+      return false
     }
   }
 }

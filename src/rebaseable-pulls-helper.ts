@@ -10,8 +10,7 @@ export class RebaseablePullsHelper {
   constructor(token: string) {
     this.graphqlClient = graphql.defaults({
       headers: {
-        authorization: `token ${token}`,
-        accept: 'application/vnd.github.merge-info-preview+json'
+        authorization: `token ${token}`
       }
     })
   }
@@ -43,7 +42,6 @@ export class RebaseablePullsHelper {
               headRepositoryOwner {
                 login
               }
-              canBeRebased
               maintainerCanModify
             }
           }
@@ -56,7 +54,6 @@ export class RebaseablePullsHelper {
     const rebaseablePulls = pulls.repository.pullRequests.edges
       .map(p => {
         if (
-          p.node.canBeRebased &&
           // Filter on head owner since the query only filters on head ref
           (headOwner.length == 0 ||
             p.node.headRepositoryOwner.login == headOwner) &&
@@ -90,7 +87,6 @@ type Edge = {
     headRepositoryOwner: {
       login: string
     }
-    canBeRebased: boolean
     maintainerCanModify: boolean
   }
 }
