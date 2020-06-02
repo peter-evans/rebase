@@ -6,7 +6,7 @@ A GitHub action to rebase pull requests in a repository.
 
 ## Usage
 
-The default, with no configured inputs, is for the action to check the current repository for rebaseable pull requests and rebase them.
+The default behaviour of the action with no configured inputs is to check the current repository for rebaseable pull requests and rebase them.
 Pull requests from forks are rebaseable only if they [allow edits from maintainers](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/allowing-changes-to-a-pull-request-branch-created-from-a-fork).
 
 ```yml
