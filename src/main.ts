@@ -14,15 +14,11 @@ async function run(): Promise<void> {
     const inputs = {
       token: core.getInput('token'),
       repository: core.getInput('repository'),
-      committer: core.getInput('committer'),
       head: core.getInput('head'),
       base: core.getInput('base')
     }
     core.debug(`Inputs: ${inspect(inputs)}`)
 
-    const [committerName, committerEmail] = inputValidator.parseCommitter(
-      inputs.committer
-    )
     const [headOwner, head] = inputValidator.parseHead(inputs.head)
 
     const rebaseablePullsHelper = new RebaseablePullsHelper(inputs.token)
@@ -51,7 +47,7 @@ async function run(): Promise<void> {
         sourceSettings.repositoryPath,
         sourceSettings.lfs
       )
-      const rebaseHelper = new RebaseHelper(git, committerName, committerEmail)
+      const rebaseHelper = new RebaseHelper(git)
       for (const rebaseablePull of rebaseablePulls) {
         await rebaseHelper.rebase(rebaseablePull)
       }

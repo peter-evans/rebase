@@ -7,9 +7,6 @@ inputs:
   repository:
     description: 'The target GitHub repository'
     default: ${{ github.repository }}
-  committer:
-    description: 'The committer name and email address.'
-    default: GitHub <noreply@github.com>
   head:
     description: >
       Filter pull requests by head user or head organization and branch name in the format user:ref-name or organization:ref-name.
