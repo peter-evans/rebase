@@ -56,24 +56,33 @@ jobs:
           path: .
 
       - name: Rebase with head filter
+        id: rebase1
         uses: ./
         with:
           token: ${{ secrets.ACTIONS_BOT_TOKEN }}
           repository: peter-evans/rebase-test-fixture-${{ matrix.target }}
           head: peter-evans:test-fixtures/1/head
+      - if: steps.rebase1.outputs.rebased-count != 1
+        run: exit 1
 
       - name: Rebase with base filter
+        id: rebase2
         uses: ./
         with:
           token: ${{ secrets.ACTIONS_BOT_TOKEN }}
           repository: peter-evans/rebase-test-fixture-${{ matrix.target }}
           base: test-fixtures/2/base
+      - if: steps.rebase2.outputs.rebased-count != 1
+        run: exit 1
 
       - name: Rebase
+        id: rebase3
         uses: ./
         with:
           token: ${{ secrets.ACTIONS_BOT_TOKEN }}
           repository: peter-evans/rebase-test-fixture-${{ matrix.target }}
+      - if: steps.rebase3.outputs.rebased-count != 2
+        run: exit 1
 
   package:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'

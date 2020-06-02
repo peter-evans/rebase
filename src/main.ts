@@ -4,7 +4,7 @@ import * as inputHelper from 'checkout/lib/input-helper'
 import * as gitSourceProvider from 'checkout/lib/git-source-provider'
 import * as gitCommandManager from 'checkout/lib/git-command-manager'
 import * as inputValidator from './input-validator'
-import {RebaseablePullsHelper} from './rebaseable-pulls-helper'
+import {PullsHelper} from './pulls-helper'
 import {RebaseHelper} from './rebase-helper'
 import {inspect} from 'util'
 import {v4 as uuidv4} from 'uuid'
@@ -21,16 +21,16 @@ async function run(): Promise<void> {
 
     const [headOwner, head] = inputValidator.parseHead(inputs.head)
 
-    const rebaseablePullsHelper = new RebaseablePullsHelper(inputs.token)
-    const rebaseablePulls = await rebaseablePullsHelper.get(
+    const pullsHelper = new PullsHelper(inputs.token)
+    const pulls = await pullsHelper.get(
       inputs.repository,
       head,
       headOwner,
       inputs.base
     )
 
-    if (rebaseablePulls.length > 0) {
-      core.info('Rebaseable pull requests found.')
+    if (pulls.length > 0) {
+      core.info(`${pulls.length} pull request(s) found.`)
 
       // Checkout
       const path = uuidv4()
@@ -48,15 +48,20 @@ async function run(): Promise<void> {
         sourceSettings.lfs
       )
       const rebaseHelper = new RebaseHelper(git)
-      for (const rebaseablePull of rebaseablePulls) {
-        await rebaseHelper.rebase(rebaseablePull)
+      let rebasedCount = 0
+      for (const pull of pulls) {
+        const result = await rebaseHelper.rebase(pull)
+        if (result) rebasedCount++
       }
+
+      // Output count of successful rebases
+      core.setOutput('rebased-count', rebasedCount)
 
       // Delete the repository
       core.debug(`Removing repo at '${sourceSettings.repositoryPath}'`)
       await io.rmRF(sourceSettings.repositoryPath)
     } else {
-      core.info('No rebaseable pull requests found.')
+      core.info('No pull requests found.')
     }
   } catch (error) {
     core.setFailed(error.message)

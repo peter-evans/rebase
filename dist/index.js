@@ -4000,23 +4000,23 @@ class RebaseHelper {
     constructor(git) {
         this.git = git;
     }
-    rebase(rebaseablePull) {
+    rebase(pull) {
         return __awaiter(this, void 0, void 0, function* () {
-            core.info(`Starting rebase of head ref '${rebaseablePull.headRef}' at '${rebaseablePull.headRepoName}'`);
+            core.info(`Attempting rebase of head ref '${pull.headRef}' at '${pull.headRepoName}'.`);
             // Add head remote
             const remoteName = uuid_1.v4();
-            yield this.git.remoteAdd(remoteName, rebaseablePull.headRepoUrl);
+            yield this.git.remoteAdd(remoteName, pull.headRepoUrl);
             // Fetch
-            core.startGroup(`Fetching head ref '${rebaseablePull.headRef}'`);
-            yield this.git.fetch([rebaseablePull.headRef], 0, remoteName);
+            core.startGroup(`Fetching head ref '${pull.headRef}'.`);
+            yield this.git.fetch([pull.headRef], 0, remoteName);
             core.endGroup();
             // Checkout
-            core.startGroup(`Checking out head ref '${rebaseablePull.headRef}'`);
+            core.startGroup(`Checking out head ref '${pull.headRef}'.`);
             const localRef = uuid_1.v4();
-            yield this.git.checkout(localRef, `refs/remotes/${remoteName}/${rebaseablePull.headRef}`);
+            yield this.git.checkout(localRef, `refs/remotes/${remoteName}/${pull.headRef}`);
             core.endGroup();
             // Get/set the committer
-            core.startGroup(`Setting the committer to the HEAD commit committer`);
+            core.startGroup(`Setting committer to match the last commit on the head ref.`);
             const sha = yield this.git.revParse('HEAD');
             const committerName = yield this.git.log1([`--format='%cn'`, sha]);
             const committerEmail = yield this.git.log1([`--format='%ce'`, sha]);
@@ -4024,21 +4024,45 @@ class RebaseHelper {
             yield this.git.config('user.email', committerEmail);
             core.endGroup();
             // Rebase
-            core.startGroup(`Rebasing on base ref '${rebaseablePull.baseRef}'`);
-            const rebased = yield this.git.rebase('origin', rebaseablePull.baseRef);
+            core.startGroup(`Rebasing on base ref '${pull.baseRef}'.`);
+            const result = yield this.tryRebase('origin', pull.baseRef);
             core.endGroup();
-            if (rebased) {
-                core.info(`Pushing changes to head ref '${rebaseablePull.headRef}'`);
+            if (result == RebaseResult.Rebased) {
+                core.startGroup(`Pushing changes to head ref '${pull.headRef}'`);
                 const options = ['--force-with-lease'];
-                yield this.git.push(remoteName, `HEAD:${rebaseablePull.headRef}`, options);
+                yield this.git.push(remoteName, `HEAD:${pull.headRef}`, options);
+                core.endGroup();
+                core.info(`Head ref '${pull.headRef}' successfully rebased.`);
+                return true;
             }
-            else {
-                core.info(`Head ref '${rebaseablePull.headRef}' is already up to date with the base`);
+            else if (result == RebaseResult.AlreadyUpToDate) {
+                core.info(`Head ref '${pull.headRef}' is already up to date with the base.`);
+            }
+            else if (result == RebaseResult.Failed) {
+                core.info(`Rebase of head ref '${pull.headRef}' failed. Conflicts must be resolved manually.`);
+            }
+            return false;
+        });
+    }
+    tryRebase(remoteName, ref) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const result = yield this.git.rebase(remoteName, ref);
+                return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate;
+            }
+            catch (_a) {
+                return RebaseResult.Failed;
             }
         });
     }
 }
 exports.RebaseHelper = RebaseHelper;
+var RebaseResult;
+(function (RebaseResult) {
+    RebaseResult[RebaseResult["Rebased"] = 0] = "Rebased";
+    RebaseResult[RebaseResult["AlreadyUpToDate"] = 1] = "AlreadyUpToDate";
+    RebaseResult[RebaseResult["Failed"] = 2] = "Failed";
+})(RebaseResult || (RebaseResult = {}));
 
 
 /***/ }),
@@ -18947,7 +18971,7 @@ const inputHelper = __importStar(__webpack_require__(932));
 const gitSourceProvider = __importStar(__webpack_require__(547));
 const gitCommandManager = __importStar(__webpack_require__(524));
 const inputValidator = __importStar(__webpack_require__(339));
-const rebaseable_pulls_helper_1 = __webpack_require__(873);
+const pulls_helper_1 = __webpack_require__(867);
 const rebase_helper_1 = __webpack_require__(51);
 const util_1 = __webpack_require__(669);
 const uuid_1 = __webpack_require__(62);
@@ -18962,10 +18986,10 @@ function run() {
             };
             core.debug(`Inputs: ${util_1.inspect(inputs)}`);
             const [headOwner, head] = inputValidator.parseHead(inputs.head);
-            const rebaseablePullsHelper = new rebaseable_pulls_helper_1.RebaseablePullsHelper(inputs.token);
-            const rebaseablePulls = yield rebaseablePullsHelper.get(inputs.repository, head, headOwner, inputs.base);
-            if (rebaseablePulls.length > 0) {
-                core.info('Rebaseable pull requests found.');
+            const pullsHelper = new pulls_helper_1.PullsHelper(inputs.token);
+            const pulls = yield pullsHelper.get(inputs.repository, head, headOwner, inputs.base);
+            if (pulls.length > 0) {
+                core.info(`${pulls.length} pull request(s) found.`);
                 // Checkout
                 const path = uuid_1.v4();
                 process.env['INPUT_PATH'] = path;
@@ -18978,15 +19002,20 @@ function run() {
                 // Rebase
                 const git = yield gitCommandManager.createCommandManager(sourceSettings.repositoryPath, sourceSettings.lfs);
                 const rebaseHelper = new rebase_helper_1.RebaseHelper(git);
-                for (const rebaseablePull of rebaseablePulls) {
-                    yield rebaseHelper.rebase(rebaseablePull);
+                let rebasedCount = 0;
+                for (const pull of pulls) {
+                    const result = yield rebaseHelper.rebase(pull);
+                    if (result)
+                        rebasedCount++;
                 }
+                // Output count of successful rebases
+                core.setOutput('rebased-count', rebasedCount);
                 // Delete the repository
                 core.debug(`Removing repo at '${sourceSettings.repositoryPath}'`);
                 yield io.rmRF(sourceSettings.repositoryPath);
             }
             else {
-                core.info('No rebaseable pull requests found.');
+                core.info('No pull requests found.');
             }
         }
         catch (error) {
@@ -24512,7 +24541,7 @@ module.exports = require("assert");
 /***/ 360:
 /***/ (function(module) {
 
-module.exports = {"_from":"@octokit/rest@^16.43.1","_id":"@octokit/rest@16.43.1","_inBundle":false,"_integrity":"sha512-gfFKwRT/wFxq5qlNjnW2dh+qh74XgTQ2B179UX5K1HYCluioWj8Ndbgqw2PVqa1NnVJkGHp2ovMpVn/DImlmkw==","_location":"/@octokit/rest","_phantomChildren":{"deprecation":"2.3.1","once":"1.4.0","os-name":"3.1.0"},"_requested":{"type":"range","registry":true,"raw":"@octokit/rest@^16.43.1","name":"@octokit/rest","escapedName":"@octokit%2frest","scope":"@octokit","rawSpec":"^16.43.1","saveSpec":null,"fetchSpec":"^16.43.1"},"_requiredBy":["/@actions/github"],"_resolved":"https://registry.npmjs.org/@octokit/rest/-/rest-16.43.1.tgz","_shasum":"3b11e7d1b1ac2bbeeb23b08a17df0b20947eda6b","_spec":"@octokit/rest@^16.43.1","_where":"/home/runner/work/rebase/rebase/node_modules/checkout/node_modules/@actions/github","author":{"name":"Gregor Martynus","url":"https://github.com/gr2m"},"bugs":{"url":"https://github.com/octokit/rest.js/issues"},"bundleDependencies":false,"bundlesize":[{"path":"./dist/octokit-rest.min.js.gz","maxSize":"33 kB"}],"contributors":[{"name":"Mike de Boer","email":"info@mikedeboer.nl"},{"name":"Fabian Jakobs","email":"fabian@c9.io"},{"name":"Joe Gallo","email":"joe@brassafrax.com"},{"name":"Gregor Martynus","url":"https://github.com/gr2m"}],"dependencies":{"@octokit/auth-token":"^2.4.0","@octokit/plugin-paginate-rest":"^1.1.1","@octokit/plugin-request-log":"^1.0.0","@octokit/plugin-rest-endpoint-methods":"2.4.0","@octokit/request":"^5.2.0","@octokit/request-error":"^1.0.2","atob-lite":"^2.0.0","before-after-hook":"^2.0.0","btoa-lite":"^1.0.0","deprecation":"^2.0.0","lodash.get":"^4.4.2","lodash.set":"^4.3.2","lodash.uniq":"^4.5.0","octokit-pagination-methods":"^1.1.0","once":"^1.4.0","universal-user-agent":"^4.0.0"},"deprecated":false,"description":"GitHub REST API client for Node.js","devDependencies":{"@gimenete/type-writer":"^0.1.3","@octokit/auth":"^1.1.1","@octokit/fixtures-server":"^5.0.6","@octokit/graphql":"^4.2.0","@types/node":"^13.1.0","bundlesize":"^0.18.0","chai":"^4.1.2","compression-webpack-plugin":"^3.1.0","cypress":"^3.0.0","glob":"^7.1.2","http-proxy-agent":"^4.0.0","lodash.camelcase":"^4.3.0","lodash.merge":"^4.6.1","lodash.upperfirst":"^4.3.1","lolex":"^5.1.2","mkdirp":"^1.0.0","mocha":"^7.0.1","mustache":"^4.0.0","nock":"^11.3.3","npm-run-all":"^4.1.2","nyc":"^15.0.0","prettier":"^1.14.2","proxy":"^1.0.0","semantic-release":"^17.0.0","sinon":"^8.0.0","sinon-chai":"^3.0.0","sort-keys":"^4.0.0","string-to-arraybuffer":"^1.0.0","string-to-jsdoc-comment":"^1.0.0","typescript":"^3.3.1","webpack":"^4.0.0","webpack-bundle-analyzer":"^3.0.0","webpack-cli":"^3.0.0"},"files":["index.js","index.d.ts","lib","plugins"],"homepage":"https://github.com/octokit/rest.js#readme","keywords":["octokit","github","rest","api-client"],"license":"MIT","name":"@octokit/rest","nyc":{"ignore":["test"]},"publishConfig":{"access":"public"},"release":{"publish":["@semantic-release/npm",{"path":"@semantic-release/github","assets":["dist/*","!dist/*.map.gz"]}]},"repository":{"type":"git","url":"git+https://github.com/octokit/rest.js.git"},"scripts":{"build":"npm-run-all build:*","build:browser":"npm-run-all build:browser:*","build:browser:development":"webpack --mode development --entry . --output-library=Octokit --output=./dist/octokit-rest.js --profile --json > dist/bundle-stats.json","build:browser:production":"webpack --mode production --entry . --plugin=compression-webpack-plugin --output-library=Octokit --output-path=./dist --output-filename=octokit-rest.min.js --devtool source-map","build:ts":"npm run -s update-endpoints:typescript","coverage":"nyc report --reporter=html && open coverage/index.html","generate-bundle-report":"webpack-bundle-analyzer dist/bundle-stats.json --mode=static --no-open --report dist/bundle-report.html","lint":"prettier --check '{lib,plugins,scripts,test}/**/*.{js,json,ts}' 'docs/*.{js,json}' 'docs/src/**/*' index.js README.md package.json","lint:fix":"prettier --write '{lib,plugins,scripts,test}/**/*.{js,json,ts}' 'docs/*.{js,json}' 'docs/src/**/*' index.js README.md package.json","postvalidate:ts":"tsc --noEmit --target es6 test/typescript-validate.ts","prebuild:browser":"mkdirp dist/","pretest":"npm run -s lint","prevalidate:ts":"npm run -s build:ts","start-fixtures-server":"octokit-fixtures-server","test":"nyc mocha test/mocha-node-setup.js \"test/*/**/*-test.js\"","test:browser":"cypress run --browser chrome","update-endpoints":"npm-run-all update-endpoints:*","update-endpoints:fetch-json":"node scripts/update-endpoints/fetch-json","update-endpoints:typescript":"node scripts/update-endpoints/typescript","validate:ts":"tsc --target es6 --noImplicitAny index.d.ts"},"types":"index.d.ts","version":"16.43.1"};
+module.exports = {"_from":"@octokit/rest@^16.43.1","_id":"@octokit/rest@16.43.1","_inBundle":false,"_integrity":"sha512-gfFKwRT/wFxq5qlNjnW2dh+qh74XgTQ2B179UX5K1HYCluioWj8Ndbgqw2PVqa1NnVJkGHp2ovMpVn/DImlmkw==","_location":"/@octokit/rest","_phantomChildren":{"deprecation":"2.3.1","once":"1.4.0","os-name":"3.1.0"},"_requested":{"type":"range","registry":true,"raw":"@octokit/rest@^16.43.1","name":"@octokit/rest","escapedName":"@octokit%2frest","scope":"@octokit","rawSpec":"^16.43.1","saveSpec":null,"fetchSpec":"^16.43.1"},"_requiredBy":["/@actions/github"],"_resolved":"https://registry.npmjs.org/@octokit/rest/-/rest-16.43.1.tgz","_shasum":"3b11e7d1b1ac2bbeeb23b08a17df0b20947eda6b","_spec":"@octokit/rest@^16.43.1","_where":"/Users/peter.evans/git/rebase/node_modules/checkout/node_modules/@actions/github","author":{"name":"Gregor Martynus","url":"https://github.com/gr2m"},"bugs":{"url":"https://github.com/octokit/rest.js/issues"},"bundleDependencies":false,"bundlesize":[{"path":"./dist/octokit-rest.min.js.gz","maxSize":"33 kB"}],"contributors":[{"name":"Mike de Boer","email":"info@mikedeboer.nl"},{"name":"Fabian Jakobs","email":"fabian@c9.io"},{"name":"Joe Gallo","email":"joe@brassafrax.com"},{"name":"Gregor Martynus","url":"https://github.com/gr2m"}],"dependencies":{"@octokit/auth-token":"^2.4.0","@octokit/plugin-paginate-rest":"^1.1.1","@octokit/plugin-request-log":"^1.0.0","@octokit/plugin-rest-endpoint-methods":"2.4.0","@octokit/request":"^5.2.0","@octokit/request-error":"^1.0.2","atob-lite":"^2.0.0","before-after-hook":"^2.0.0","btoa-lite":"^1.0.0","deprecation":"^2.0.0","lodash.get":"^4.4.2","lodash.set":"^4.3.2","lodash.uniq":"^4.5.0","octokit-pagination-methods":"^1.1.0","once":"^1.4.0","universal-user-agent":"^4.0.0"},"deprecated":false,"description":"GitHub REST API client for Node.js","devDependencies":{"@gimenete/type-writer":"^0.1.3","@octokit/auth":"^1.1.1","@octokit/fixtures-server":"^5.0.6","@octokit/graphql":"^4.2.0","@types/node":"^13.1.0","bundlesize":"^0.18.0","chai":"^4.1.2","compression-webpack-plugin":"^3.1.0","cypress":"^3.0.0","glob":"^7.1.2","http-proxy-agent":"^4.0.0","lodash.camelcase":"^4.3.0","lodash.merge":"^4.6.1","lodash.upperfirst":"^4.3.1","lolex":"^5.1.2","mkdirp":"^1.0.0","mocha":"^7.0.1","mustache":"^4.0.0","nock":"^11.3.3","npm-run-all":"^4.1.2","nyc":"^15.0.0","prettier":"^1.14.2","proxy":"^1.0.0","semantic-release":"^17.0.0","sinon":"^8.0.0","sinon-chai":"^3.0.0","sort-keys":"^4.0.0","string-to-arraybuffer":"^1.0.0","string-to-jsdoc-comment":"^1.0.0","typescript":"^3.3.1","webpack":"^4.0.0","webpack-bundle-analyzer":"^3.0.0","webpack-cli":"^3.0.0"},"files":["index.js","index.d.ts","lib","plugins"],"homepage":"https://github.com/octokit/rest.js#readme","keywords":["octokit","github","rest","api-client"],"license":"MIT","name":"@octokit/rest","nyc":{"ignore":["test"]},"publishConfig":{"access":"public"},"release":{"publish":["@semantic-release/npm",{"path":"@semantic-release/github","assets":["dist/*","!dist/*.map.gz"]}]},"repository":{"type":"git","url":"git+https://github.com/octokit/rest.js.git"},"scripts":{"build":"npm-run-all build:*","build:browser":"npm-run-all build:browser:*","build:browser:development":"webpack --mode development --entry . --output-library=Octokit --output=./dist/octokit-rest.js --profile --json > dist/bundle-stats.json","build:browser:production":"webpack --mode production --entry . --plugin=compression-webpack-plugin --output-library=Octokit --output-path=./dist --output-filename=octokit-rest.min.js --devtool source-map","build:ts":"npm run -s update-endpoints:typescript","coverage":"nyc report --reporter=html && open coverage/index.html","generate-bundle-report":"webpack-bundle-analyzer dist/bundle-stats.json --mode=static --no-open --report dist/bundle-report.html","lint":"prettier --check '{lib,plugins,scripts,test}/**/*.{js,json,ts}' 'docs/*.{js,json}' 'docs/src/**/*' index.js README.md package.json","lint:fix":"prettier --write '{lib,plugins,scripts,test}/**/*.{js,json,ts}' 'docs/*.{js,json}' 'docs/src/**/*' index.js README.md package.json","postvalidate:ts":"tsc --noEmit --target es6 test/typescript-validate.ts","prebuild:browser":"mkdirp dist/","pretest":"npm run -s lint","prevalidate:ts":"npm run -s build:ts","start-fixtures-server":"octokit-fixtures-server","test":"nyc mocha test/mocha-node-setup.js \"test/*/**/*-test.js\"","test:browser":"cypress run --browser chrome","update-endpoints":"npm-run-all update-endpoints:*","update-endpoints:fetch-json":"node scripts/update-endpoints/fetch-json","update-endpoints:typescript":"node scripts/update-endpoints/typescript","validate:ts":"tsc --target es6 --noImplicitAny index.d.ts"},"types":"index.d.ts","version":"16.43.1"};
 
 /***/ }),
 
@@ -37173,7 +37202,7 @@ module.exports = function (str) {
 
 /***/ }),
 
-/***/ 873:
+/***/ 867:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -37207,16 +37236,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RebaseablePull = exports.RebaseablePullsHelper = void 0;
+exports.Pull = exports.PullsHelper = void 0;
 const core = __importStar(__webpack_require__(470));
 const graphql_1 = __webpack_require__(898);
 const util_1 = __webpack_require__(669);
-class RebaseablePullsHelper {
+class PullsHelper {
     constructor(token) {
         this.graphqlClient = graphql_1.graphql.defaults({
             headers: {
-                authorization: `token ${token}`,
-                accept: 'application/vnd.github.merge-info-preview+json'
+                authorization: `token ${token}`
             }
         });
     }
@@ -37245,7 +37273,6 @@ class RebaseablePullsHelper {
               headRepositoryOwner {
                 login
               }
-              canBeRebased
               maintainerCanModify
             }
           }
@@ -37254,26 +37281,26 @@ class RebaseablePullsHelper {
     }`;
             const pulls = yield this.graphqlClient(query, params);
             core.debug(`Pulls: ${util_1.inspect(pulls.repository.pullRequests.edges)}`);
-            const rebaseablePulls = pulls.repository.pullRequests.edges
+            const filteredPulls = pulls.repository.pullRequests.edges
                 .map(p => {
-                if (p.node.canBeRebased &&
-                    // Filter on head owner since the query only filters on head ref
-                    (headOwner.length == 0 ||
-                        p.node.headRepositoryOwner.login == headOwner) &&
+                if (
+                // Filter on head owner since the query only filters on head ref
+                (headOwner.length == 0 ||
+                    p.node.headRepositoryOwner.login == headOwner) &&
                     // Filter heads from forks where 'maintainer can modify' is false
                     (p.node.headRepositoryOwner.login == owner ||
                         p.node.maintainerCanModify)) {
-                    return new RebaseablePull(p.node.baseRefName, p.node.headRepository.url, p.node.headRepository.nameWithOwner, p.node.headRefName);
+                    return new Pull(p.node.baseRefName, p.node.headRepository.url, p.node.headRepository.nameWithOwner, p.node.headRefName);
                 }
             })
                 .filter(notUndefined);
-            core.debug(`rebaseablePulls: ${util_1.inspect(rebaseablePulls)}`);
-            return rebaseablePulls;
+            core.debug(`filteredPulls: ${util_1.inspect(filteredPulls)}`);
+            return filteredPulls;
         });
     }
 }
-exports.RebaseablePullsHelper = RebaseablePullsHelper;
-class RebaseablePull {
+exports.PullsHelper = PullsHelper;
+class Pull {
     constructor(baseRef, headRepoUrl, headRepoName, headRef) {
         this.baseRef = baseRef;
         this.headRepoUrl = headRepoUrl;
@@ -37281,7 +37308,7 @@ class RebaseablePull {
         this.headRef = headRef;
     }
 }
-exports.RebaseablePull = RebaseablePull;
+exports.Pull = Pull;
 function notUndefined(x) {
     return x !== undefined;
 }
