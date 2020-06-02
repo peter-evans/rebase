@@ -78,9 +78,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: peter-evans/rebase@v1
+        id: rebase
         with:
           head: ${{ github.event.client_payload.pull_request.head.label }}
       - name: Add reaction
+        if: steps.rebase.outputs.rebased-count == 1
         uses: peter-evans/create-or-update-comment@v1
         with:
           token: ${{ secrets.PAT }}
