@@ -4002,21 +4002,21 @@ class RebaseHelper {
     }
     rebase(pull) {
         return __awaiter(this, void 0, void 0, function* () {
-            core.info(`Starting rebase of head ref '${pull.headRef}' at '${pull.headRepoName}'`);
+            core.info(`Attempting rebase of head ref '${pull.headRef}' at '${pull.headRepoName}'.`);
             // Add head remote
             const remoteName = uuid_1.v4();
             yield this.git.remoteAdd(remoteName, pull.headRepoUrl);
             // Fetch
-            core.startGroup(`Fetching head ref '${pull.headRef}'`);
+            core.startGroup(`Fetching head ref '${pull.headRef}'.`);
             yield this.git.fetch([pull.headRef], 0, remoteName);
             core.endGroup();
             // Checkout
-            core.startGroup(`Checking out head ref '${pull.headRef}'`);
+            core.startGroup(`Checking out head ref '${pull.headRef}'.`);
             const localRef = uuid_1.v4();
             yield this.git.checkout(localRef, `refs/remotes/${remoteName}/${pull.headRef}`);
             core.endGroup();
             // Get/set the committer
-            core.startGroup(`Setting the committer to the HEAD commit committer`);
+            core.startGroup(`Setting committer to match the last commit on the head ref.`);
             const sha = yield this.git.revParse('HEAD');
             const committerName = yield this.git.log1([`--format='%cn'`, sha]);
             const committerEmail = yield this.git.log1([`--format='%ce'`, sha]);
@@ -4024,32 +4024,46 @@ class RebaseHelper {
             yield this.git.config('user.email', committerEmail);
             core.endGroup();
             // Rebase
-            core.startGroup(`Rebasing on base ref '${pull.baseRef}'`);
-            const rebased = yield this.tryRebase('origin', pull.baseRef);
+            core.startGroup(`Rebasing on base ref '${pull.baseRef}'.`);
+            const result = yield this.tryRebase('origin', pull.baseRef);
             core.endGroup();
-            if (rebased) {
-                core.info(`Pushing changes to head ref '${pull.headRef}'`);
-                const options = ['--force-with-lease'];
-                yield this.git.push(remoteName, `HEAD:${pull.headRef}`, options);
-            }
-            else {
-                core.info(`Head ref '${pull.headRef}' is already up to date with the base`);
+            // Push options
+            const options = ['--force-with-lease'];
+            switch (result) {
+                case RebaseResult.Rebased:
+                    core.info(`Pushing changes to head ref '${pull.headRef}'`);
+                    yield this.git.push(remoteName, `HEAD:${pull.headRef}`, options);
+                    core.info(`Head ref '${pull.headRef}' successfully rebased.`);
+                    break;
+                case RebaseResult.AlreadyUpToDate:
+                    core.info(`Head ref '${pull.headRef}' is already up to date with the base.`);
+                    break;
+                case RebaseResult.Failed:
+                    core.info('Rebase failed. Conflicts must be resolved manually.');
+                    break;
+                default:
             }
         });
     }
     tryRebase(remoteName, ref) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                return yield this.git.rebase(remoteName, ref);
+                const result = yield this.git.rebase(remoteName, ref);
+                return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate;
             }
             catch (_a) {
-                core.info('Automatic rebase failed. Conflicts must be resolved manually.');
-                return false;
+                return RebaseResult.Failed;
             }
         });
     }
 }
 exports.RebaseHelper = RebaseHelper;
+var RebaseResult;
+(function (RebaseResult) {
+    RebaseResult[RebaseResult["Rebased"] = 0] = "Rebased";
+    RebaseResult[RebaseResult["AlreadyUpToDate"] = 1] = "AlreadyUpToDate";
+    RebaseResult[RebaseResult["Failed"] = 2] = "Failed";
+})(RebaseResult || (RebaseResult = {}));
 
 
 /***/ }),
