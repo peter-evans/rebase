@@ -3,8 +3,7 @@
     "target": "es6",
     "module": "commonjs",
     "lib": [
-      "es6",
-      "es2020.promise"
+      "es6"
     ],
     "outDir": "./lib",
     "rootDir": "./src",
