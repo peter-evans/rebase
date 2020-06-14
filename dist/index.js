@@ -47,9 +47,9 @@ module.exports =
 /******/ 	return startup();
 /******/ })
 /************************************************************************/
-/******/ ({
-
-/***/ 1:
+/******/ ([
+/* 0 */,
+/* 1 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -345,8 +345,7 @@ function copyFile(srcFile, destFile, force) {
 //# sourceMappingURL=io.js.map
 
 /***/ }),
-
-/***/ 2:
+/* 2 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -399,8 +398,8 @@ module.exports = osName;
 
 
 /***/ }),
-
-/***/ 4:
+/* 3 */,
+/* 4 */
 /***/ (function(module) {
 
 "use strict";
@@ -422,109 +421,618 @@ module.exports = function (x) {
 
 
 /***/ }),
+/* 5 */,
+/* 6 */,
+/* 7 */,
+/* 8 */,
+/* 9 */
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
 
-/***/ 9:
-/***/ (function(module, __unusedexports, __webpack_require__) {
+"use strict";
 
-var once = __webpack_require__(969);
-
-var noop = function() {};
-
-var isRequest = function(stream) {
-	return stream.setHeader && typeof stream.abort === 'function';
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
 };
-
-var isChildProcess = function(stream) {
-	return stream.stdio && Array.isArray(stream.stdio) && stream.stdio.length === 3
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
 };
-
-var eos = function(stream, opts, callback) {
-	if (typeof opts === 'function') return eos(stream, null, opts);
-	if (!opts) opts = {};
-
-	callback = once(callback || noop);
-
-	var ws = stream._writableState;
-	var rs = stream._readableState;
-	var readable = opts.readable || (opts.readable !== false && stream.readable);
-	var writable = opts.writable || (opts.writable !== false && stream.writable);
-	var cancelled = false;
-
-	var onlegacyfinish = function() {
-		if (!stream.writable) onfinish();
-	};
-
-	var onfinish = function() {
-		writable = false;
-		if (!readable) callback.call(stream);
-	};
-
-	var onend = function() {
-		readable = false;
-		if (!writable) callback.call(stream);
-	};
-
-	var onexit = function(exitCode) {
-		callback.call(stream, exitCode ? new Error('exited with error code: ' + exitCode) : null);
-	};
-
-	var onerror = function(err) {
-		callback.call(stream, err);
-	};
-
-	var onclose = function() {
-		process.nextTick(onclosenexttick);
-	};
-
-	var onclosenexttick = function() {
-		if (cancelled) return;
-		if (readable && !(rs && (rs.ended && !rs.destroyed))) return callback.call(stream, new Error('premature close'));
-		if (writable && !(ws && (ws.ended && !ws.destroyed))) return callback.call(stream, new Error('premature close'));
-	};
-
-	var onrequest = function() {
-		stream.req.on('finish', onfinish);
-	};
-
-	if (isRequest(stream)) {
-		stream.on('complete', onfinish);
-		stream.on('abort', onclose);
-		if (stream.req) onrequest();
-		else stream.on('request', onrequest);
-	} else if (writable && !ws) { // legacy streams
-		stream.on('end', onlegacyfinish);
-		stream.on('close', onlegacyfinish);
-	}
-
-	if (isChildProcess(stream)) stream.on('exit', onexit);
-
-	stream.on('end', onend);
-	stream.on('finish', onfinish);
-	if (opts.error !== false) stream.on('error', onerror);
-	stream.on('close', onclose);
-
-	return function() {
-		cancelled = true;
-		stream.removeListener('complete', onfinish);
-		stream.removeListener('abort', onclose);
-		stream.removeListener('request', onrequest);
-		if (stream.req) stream.req.removeListener('finish', onfinish);
-		stream.removeListener('end', onlegacyfinish);
-		stream.removeListener('close', onlegacyfinish);
-		stream.removeListener('finish', onfinish);
-		stream.removeListener('exit', onexit);
-		stream.removeListener('end', onend);
-		stream.removeListener('error', onerror);
-		stream.removeListener('close', onclose);
-	};
-};
-
-module.exports = eos;
-
+Object.defineProperty(exports, "__esModule", { value: true });
+const os = __importStar(__webpack_require__(87));
+const events = __importStar(__webpack_require__(614));
+const child = __importStar(__webpack_require__(129));
+const path = __importStar(__webpack_require__(622));
+const io = __importStar(__webpack_require__(1));
+const ioUtil = __importStar(__webpack_require__(672));
+/* eslint-disable @typescript-eslint/unbound-method */
+const IS_WINDOWS = process.platform === 'win32';
+/*
+ * Class for running command line tools. Handles quoting and arg parsing in a platform agnostic way.
+ */
+class ToolRunner extends events.EventEmitter {
+    constructor(toolPath, args, options) {
+        super();
+        if (!toolPath) {
+            throw new Error("Parameter 'toolPath' cannot be null or empty.");
+        }
+        this.toolPath = toolPath;
+        this.args = args || [];
+        this.options = options || {};
+    }
+    _debug(message) {
+        if (this.options.listeners && this.options.listeners.debug) {
+            this.options.listeners.debug(message);
+        }
+    }
+    _getCommandString(options, noPrefix) {
+        const toolPath = this._getSpawnFileName();
+        const args = this._getSpawnArgs(options);
+        let cmd = noPrefix ? '' : '[command]'; // omit prefix when piped to a second tool
+        if (IS_WINDOWS) {
+            // Windows + cmd file
+            if (this._isCmdFile()) {
+                cmd += toolPath;
+                for (const a of args) {
+                    cmd += ` ${a}`;
+                }
+            }
+            // Windows + verbatim
+            else if (options.windowsVerbatimArguments) {
+                cmd += `"${toolPath}"`;
+                for (const a of args) {
+                    cmd += ` ${a}`;
+                }
+            }
+            // Windows (regular)
+            else {
+                cmd += this._windowsQuoteCmdArg(toolPath);
+                for (const a of args) {
+                    cmd += ` ${this._windowsQuoteCmdArg(a)}`;
+                }
+            }
+        }
+        else {
+            // OSX/Linux - this can likely be improved with some form of quoting.
+            // creating processes on Unix is fundamentally different than Windows.
+            // on Unix, execvp() takes an arg array.
+            cmd += toolPath;
+            for (const a of args) {
+                cmd += ` ${a}`;
+            }
+        }
+        return cmd;
+    }
+    _processLineBuffer(data, strBuffer, onLine) {
+        try {
+            let s = strBuffer + data.toString();
+            let n = s.indexOf(os.EOL);
+            while (n > -1) {
+                const line = s.substring(0, n);
+                onLine(line);
+                // the rest of the string ...
+                s = s.substring(n + os.EOL.length);
+                n = s.indexOf(os.EOL);
+            }
+            strBuffer = s;
+        }
+        catch (err) {
+            // streaming lines to console is best effort.  Don't fail a build.
+            this._debug(`error processing line. Failed with error ${err}`);
+        }
+    }
+    _getSpawnFileName() {
+        if (IS_WINDOWS) {
+            if (this._isCmdFile()) {
+                return process.env['COMSPEC'] || 'cmd.exe';
+            }
+        }
+        return this.toolPath;
+    }
+    _getSpawnArgs(options) {
+        if (IS_WINDOWS) {
+            if (this._isCmdFile()) {
+                let argline = `/D /S /C "${this._windowsQuoteCmdArg(this.toolPath)}`;
+                for (const a of this.args) {
+                    argline += ' ';
+                    argline += options.windowsVerbatimArguments
+                        ? a
+                        : this._windowsQuoteCmdArg(a);
+                }
+                argline += '"';
+                return [argline];
+            }
+        }
+        return this.args;
+    }
+    _endsWith(str, end) {
+        return str.endsWith(end);
+    }
+    _isCmdFile() {
+        const upperToolPath = this.toolPath.toUpperCase();
+        return (this._endsWith(upperToolPath, '.CMD') ||
+            this._endsWith(upperToolPath, '.BAT'));
+    }
+    _windowsQuoteCmdArg(arg) {
+        // for .exe, apply the normal quoting rules that libuv applies
+        if (!this._isCmdFile()) {
+            return this._uvQuoteCmdArg(arg);
+        }
+        // otherwise apply quoting rules specific to the cmd.exe command line parser.
+        // the libuv rules are generic and are not designed specifically for cmd.exe
+        // command line parser.
+        //
+        // for a detailed description of the cmd.exe command line parser, refer to
+        // http://stackoverflow.com/questions/4094699/how-does-the-windows-command-interpreter-cmd-exe-parse-scripts/7970912#7970912
+        // need quotes for empty arg
+        if (!arg) {
+            return '""';
+        }
+        // determine whether the arg needs to be quoted
+        const cmdSpecialChars = [
+            ' ',
+            '\t',
+            '&',
+            '(',
+            ')',
+            '[',
+            ']',
+            '{',
+            '}',
+            '^',
+            '=',
+            ';',
+            '!',
+            "'",
+            '+',
+            ',',
+            '`',
+            '~',
+            '|',
+            '<',
+            '>',
+            '"'
+        ];
+        let needsQuotes = false;
+        for (const char of arg) {
+            if (cmdSpecialChars.some(x => x === char)) {
+                needsQuotes = true;
+                break;
+            }
+        }
+        // short-circuit if quotes not needed
+        if (!needsQuotes) {
+            return arg;
+        }
+        // the following quoting rules are very similar to the rules that by libuv applies.
+        //
+        // 1) wrap the string in quotes
+        //
+        // 2) double-up quotes - i.e. " => ""
+        //
+        //    this is different from the libuv quoting rules. libuv replaces " with \", which unfortunately
+        //    doesn't work well with a cmd.exe command line.
+        //
+        //    note, replacing " with "" also works well if the arg is passed to a downstream .NET console app.
+        //    for example, the command line:
+        //          foo.exe "myarg:""my val"""
+        //    is parsed by a .NET console app into an arg array:
+        //          [ "myarg:\"my val\"" ]
+        //    which is the same end result when applying libuv quoting rules. although the actual
+        //    command line from libuv quoting rules would look like:
+        //          foo.exe "myarg:\"my val\""
+        //
+        // 3) double-up slashes that precede a quote,
+        //    e.g.  hello \world    => "hello \world"
+        //          hello\"world    => "hello\\""world"
+        //          hello\\"world   => "hello\\\\""world"
+        //          hello world\    => "hello world\\"
+        //
+        //    technically this is not required for a cmd.exe command line, or the batch argument parser.
+        //    the reasons for including this as a .cmd quoting rule are:
+        //
+        //    a) this is optimized for the scenario where the argument is passed from the .cmd file to an
+        //       external program. many programs (e.g. .NET console apps) rely on the slash-doubling rule.
+        //
+        //    b) it's what we've been doing previously (by deferring to node default behavior) and we
+        //       haven't heard any complaints about that aspect.
+        //
+        // note, a weakness of the quoting rules chosen here, is that % is not escaped. in fact, % cannot be
+        // escaped when used on the command line directly - even though within a .cmd file % can be escaped
+        // by using %%.
+        //
+        // the saving grace is, on the command line, %var% is left as-is if var is not defined. this contrasts
+        // the line parsing rules within a .cmd file, where if var is not defined it is replaced with nothing.
+        //
+        // one option that was explored was replacing % with ^% - i.e. %var% => ^%var^%. this hack would
+        // often work, since it is unlikely that var^ would exist, and the ^ character is removed when the
+        // variable is used. the problem, however, is that ^ is not removed when %* is used to pass the args
+        // to an external program.
+        //
+        // an unexplored potential solution for the % escaping problem, is to create a wrapper .cmd file.
+        // % can be escaped within a .cmd file.
+        let reverse = '"';
+        let quoteHit = true;
+        for (let i = arg.length; i > 0; i--) {
+            // walk the string in reverse
+            reverse += arg[i - 1];
+            if (quoteHit && arg[i - 1] === '\\') {
+                reverse += '\\'; // double the slash
+            }
+            else if (arg[i - 1] === '"') {
+                quoteHit = true;
+                reverse += '"'; // double the quote
+            }
+            else {
+                quoteHit = false;
+            }
+        }
+        reverse += '"';
+        return reverse
+            .split('')
+            .reverse()
+            .join('');
+    }
+    _uvQuoteCmdArg(arg) {
+        // Tool runner wraps child_process.spawn() and needs to apply the same quoting as
+        // Node in certain cases where the undocumented spawn option windowsVerbatimArguments
+        // is used.
+        //
+        // Since this function is a port of quote_cmd_arg from Node 4.x (technically, lib UV,
+        // see https://github.com/nodejs/node/blob/v4.x/deps/uv/src/win/process.c for details),
+        // pasting copyright notice from Node within this function:
+        //
+        //      Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+        //
+        //      Permission is hereby granted, free of charge, to any person obtaining a copy
+        //      of this software and associated documentation files (the "Software"), to
+        //      deal in the Software without restriction, including without limitation the
+        //      rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+        //      sell copies of the Software, and to permit persons to whom the Software is
+        //      furnished to do so, subject to the following conditions:
+        //
+        //      The above copyright notice and this permission notice shall be included in
+        //      all copies or substantial portions of the Software.
+        //
+        //      THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        //      IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        //      FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        //      AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        //      LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+        //      FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+        //      IN THE SOFTWARE.
+        if (!arg) {
+            // Need double quotation for empty argument
+            return '""';
+        }
+        if (!arg.includes(' ') && !arg.includes('\t') && !arg.includes('"')) {
+            // No quotation needed
+            return arg;
+        }
+        if (!arg.includes('"') && !arg.includes('\\')) {
+            // No embedded double quotes or backslashes, so I can just wrap
+            // quote marks around the whole thing.
+            return `"${arg}"`;
+        }
+        // Expected input/output:
+        //   input : hello"world
+        //   output: "hello\"world"
+        //   input : hello""world
+        //   output: "hello\"\"world"
+        //   input : hello\world
+        //   output: hello\world
+        //   input : hello\\world
+        //   output: hello\\world
+        //   input : hello\"world
+        //   output: "hello\\\"world"
+        //   input : hello\\"world
+        //   output: "hello\\\\\"world"
+        //   input : hello world\
+        //   output: "hello world\\" - note the comment in libuv actually reads "hello world\"
+        //                             but it appears the comment is wrong, it should be "hello world\\"
+        let reverse = '"';
+        let quoteHit = true;
+        for (let i = arg.length; i > 0; i--) {
+            // walk the string in reverse
+            reverse += arg[i - 1];
+            if (quoteHit && arg[i - 1] === '\\') {
+                reverse += '\\';
+            }
+            else if (arg[i - 1] === '"') {
+                quoteHit = true;
+                reverse += '\\';
+            }
+            else {
+                quoteHit = false;
+            }
+        }
+        reverse += '"';
+        return reverse
+            .split('')
+            .reverse()
+            .join('');
+    }
+    _cloneExecOptions(options) {
+        options = options || {};
+        const result = {
+            cwd: options.cwd || process.cwd(),
+            env: options.env || process.env,
+            silent: options.silent || false,
+            windowsVerbatimArguments: options.windowsVerbatimArguments || false,
+            failOnStdErr: options.failOnStdErr || false,
+            ignoreReturnCode: options.ignoreReturnCode || false,
+            delay: options.delay || 10000
+        };
+        result.outStream = options.outStream || process.stdout;
+        result.errStream = options.errStream || process.stderr;
+        return result;
+    }
+    _getSpawnOptions(options, toolPath) {
+        options = options || {};
+        const result = {};
+        result.cwd = options.cwd;
+        result.env = options.env;
+        result['windowsVerbatimArguments'] =
+            options.windowsVerbatimArguments || this._isCmdFile();
+        if (options.windowsVerbatimArguments) {
+            result.argv0 = `"${toolPath}"`;
+        }
+        return result;
+    }
+    /**
+     * Exec a tool.
+     * Output will be streamed to the live console.
+     * Returns promise with return code
+     *
+     * @param     tool     path to tool to exec
+     * @param     options  optional exec options.  See ExecOptions
+     * @returns   number
+     */
+    exec() {
+        return __awaiter(this, void 0, void 0, function* () {
+            // root the tool path if it is unrooted and contains relative pathing
+            if (!ioUtil.isRooted(this.toolPath) &&
+                (this.toolPath.includes('/') ||
+                    (IS_WINDOWS && this.toolPath.includes('\\')))) {
+                // prefer options.cwd if it is specified, however options.cwd may also need to be rooted
+                this.toolPath = path.resolve(process.cwd(), this.options.cwd || process.cwd(), this.toolPath);
+            }
+            // if the tool is only a file name, then resolve it from the PATH
+            // otherwise verify it exists (add extension on Windows if necessary)
+            this.toolPath = yield io.which(this.toolPath, true);
+            return new Promise((resolve, reject) => {
+                this._debug(`exec tool: ${this.toolPath}`);
+                this._debug('arguments:');
+                for (const arg of this.args) {
+                    this._debug(`   ${arg}`);
+                }
+                const optionsNonNull = this._cloneExecOptions(this.options);
+                if (!optionsNonNull.silent && optionsNonNull.outStream) {
+                    optionsNonNull.outStream.write(this._getCommandString(optionsNonNull) + os.EOL);
+                }
+                const state = new ExecState(optionsNonNull, this.toolPath);
+                state.on('debug', (message) => {
+                    this._debug(message);
+                });
+                const fileName = this._getSpawnFileName();
+                const cp = child.spawn(fileName, this._getSpawnArgs(optionsNonNull), this._getSpawnOptions(this.options, fileName));
+                const stdbuffer = '';
+                if (cp.stdout) {
+                    cp.stdout.on('data', (data) => {
+                        if (this.options.listeners && this.options.listeners.stdout) {
+                            this.options.listeners.stdout(data);
+                        }
+                        if (!optionsNonNull.silent && optionsNonNull.outStream) {
+                            optionsNonNull.outStream.write(data);
+                        }
+                        this._processLineBuffer(data, stdbuffer, (line) => {
+                            if (this.options.listeners && this.options.listeners.stdline) {
+                                this.options.listeners.stdline(line);
+                            }
+                        });
+                    });
+                }
+                const errbuffer = '';
+                if (cp.stderr) {
+                    cp.stderr.on('data', (data) => {
+                        state.processStderr = true;
+                        if (this.options.listeners && this.options.listeners.stderr) {
+                            this.options.listeners.stderr(data);
+                        }
+                        if (!optionsNonNull.silent &&
+                            optionsNonNull.errStream &&
+                            optionsNonNull.outStream) {
+                            const s = optionsNonNull.failOnStdErr
+                                ? optionsNonNull.errStream
+                                : optionsNonNull.outStream;
+                            s.write(data);
+                        }
+                        this._processLineBuffer(data, errbuffer, (line) => {
+                            if (this.options.listeners && this.options.listeners.errline) {
+                                this.options.listeners.errline(line);
+                            }
+                        });
+                    });
+                }
+                cp.on('error', (err) => {
+                    state.processError = err.message;
+                    state.processExited = true;
+                    state.processClosed = true;
+                    state.CheckComplete();
+                });
+                cp.on('exit', (code) => {
+                    state.processExitCode = code;
+                    state.processExited = true;
+                    this._debug(`Exit code ${code} received from tool '${this.toolPath}'`);
+                    state.CheckComplete();
+                });
+                cp.on('close', (code) => {
+                    state.processExitCode = code;
+                    state.processExited = true;
+                    state.processClosed = true;
+                    this._debug(`STDIO streams have closed for tool '${this.toolPath}'`);
+                    state.CheckComplete();
+                });
+                state.on('done', (error, exitCode) => {
+                    if (stdbuffer.length > 0) {
+                        this.emit('stdline', stdbuffer);
+                    }
+                    if (errbuffer.length > 0) {
+                        this.emit('errline', errbuffer);
+                    }
+                    cp.removeAllListeners();
+                    if (error) {
+                        reject(error);
+                    }
+                    else {
+                        resolve(exitCode);
+                    }
+                });
+                if (this.options.input) {
+                    if (!cp.stdin) {
+                        throw new Error('child process missing stdin');
+                    }
+                    cp.stdin.end(this.options.input);
+                }
+            });
+        });
+    }
+}
+exports.ToolRunner = ToolRunner;
+/**
+ * Convert an arg string to an array of args. Handles escaping
+ *
+ * @param    argString   string of arguments
+ * @returns  string[]    array of arguments
+ */
+function argStringToArray(argString) {
+    const args = [];
+    let inQuotes = false;
+    let escaped = false;
+    let arg = '';
+    function append(c) {
+        // we only escape double quotes.
+        if (escaped && c !== '"') {
+            arg += '\\';
+        }
+        arg += c;
+        escaped = false;
+    }
+    for (let i = 0; i < argString.length; i++) {
+        const c = argString.charAt(i);
+        if (c === '"') {
+            if (!escaped) {
+                inQuotes = !inQuotes;
+            }
+            else {
+                append(c);
+            }
+            continue;
+        }
+        if (c === '\\' && escaped) {
+            append(c);
+            continue;
+        }
+        if (c === '\\' && inQuotes) {
+            escaped = true;
+            continue;
+        }
+        if (c === ' ' && !inQuotes) {
+            if (arg.length > 0) {
+                args.push(arg);
+                arg = '';
+            }
+            continue;
+        }
+        append(c);
+    }
+    if (arg.length > 0) {
+        args.push(arg.trim());
+    }
+    return args;
+}
+exports.argStringToArray = argStringToArray;
+class ExecState extends events.EventEmitter {
+    constructor(options, toolPath) {
+        super();
+        this.processClosed = false; // tracks whether the process has exited and stdio is closed
+        this.processError = '';
+        this.processExitCode = 0;
+        this.processExited = false; // tracks whether the process has exited
+        this.processStderr = false; // tracks whether stderr was written to
+        this.delay = 10000; // 10 seconds
+        this.done = false;
+        this.timeout = null;
+        if (!toolPath) {
+            throw new Error('toolPath must not be empty');
+        }
+        this.options = options;
+        this.toolPath = toolPath;
+        if (options.delay) {
+            this.delay = options.delay;
+        }
+    }
+    CheckComplete() {
+        if (this.done) {
+            return;
+        }
+        if (this.processClosed) {
+            this._setResult();
+        }
+        else if (this.processExited) {
+            this.timeout = setTimeout(ExecState.HandleTimeout, this.delay, this);
+        }
+    }
+    _debug(message) {
+        this.emit('debug', message);
+    }
+    _setResult() {
+        // determine whether there is an error
+        let error;
+        if (this.processExited) {
+            if (this.processError) {
+                error = new Error(`There was an error when attempting to execute the process '${this.toolPath}'. This may indicate the process failed to start. Error: ${this.processError}`);
+            }
+            else if (this.processExitCode !== 0 && !this.options.ignoreReturnCode) {
+                error = new Error(`The process '${this.toolPath}' failed with exit code ${this.processExitCode}`);
+            }
+            else if (this.processStderr && this.options.failOnStdErr) {
+                error = new Error(`The process '${this.toolPath}' failed because one or more lines were written to the STDERR stream`);
+            }
+        }
+        // clear the timeout
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+            this.timeout = null;
+        }
+        this.done = true;
+        this.emit('done', error, this.processExitCode);
+    }
+    static HandleTimeout(state) {
+        if (state.done) {
+            return;
+        }
+        if (!state.processClosed && state.processExited) {
+            const message = `The STDIO streams did not close within ${state.delay /
+                1000} seconds of the exit event from process '${state.toolPath}'. This may indicate a child process inherited the STDIO streams and has not yet exited.`;
+            state._debug(message);
+        }
+        state._setResult();
+    }
+}
+//# sourceMappingURL=toolrunner.js.map
 
 /***/ }),
-
-/***/ 11:
+/* 10 */,
+/* 11 */
 /***/ (function(module) {
 
 // Returns a wrapper function that returns a wrapped callback
@@ -563,8 +1071,7 @@ function wrappy (fn, cb) {
 
 
 /***/ }),
-
-/***/ 12:
+/* 12 */
 /***/ (function(module, exports) {
 
 exports = module.exports = SemVer
@@ -2053,8 +2560,9 @@ function coerce (version) {
 
 
 /***/ }),
-
-/***/ 15:
+/* 13 */,
+/* 14 */,
+/* 15 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -2083,23 +2591,22 @@ exports.getUserAgent = getUserAgent;
 
 
 /***/ }),
-
-/***/ 16:
+/* 16 */
 /***/ (function(module) {
 
 module.exports = require("tls");
 
 /***/ }),
-
-/***/ 18:
+/* 17 */,
+/* 18 */
 /***/ (function(module) {
 
 module.exports = eval("require")("encoding");
 
 
 /***/ }),
-
-/***/ 20:
+/* 19 */,
+/* 20 */
 /***/ (function(module, exports) {
 
 exports = module.exports = SemVer
@@ -3701,8 +4208,21 @@ function coerce (version, options) {
 
 
 /***/ }),
-
-/***/ 35:
+/* 21 */,
+/* 22 */,
+/* 23 */,
+/* 24 */,
+/* 25 */,
+/* 26 */,
+/* 27 */,
+/* 28 */,
+/* 29 */,
+/* 30 */,
+/* 31 */,
+/* 32 */,
+/* 33 */,
+/* 34 */,
+/* 35 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -3722,7 +4242,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -3815,8 +4335,7 @@ function downloadArchive(authToken, owner, repo, ref, commit) {
 
 
 /***/ }),
-
-/***/ 36:
+/* 36 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = authenticationRequestError;
@@ -3883,8 +4402,9 @@ function authenticationRequestError(state, error, options) {
 
 
 /***/ }),
-
-/***/ 39:
+/* 37 */,
+/* 38 */,
+/* 39 */
 /***/ (function(module) {
 
 "use strict";
@@ -3904,8 +4424,16 @@ module.exports = opts => {
 
 
 /***/ }),
-
-/***/ 49:
+/* 40 */,
+/* 41 */,
+/* 42 */,
+/* 43 */,
+/* 44 */,
+/* 45 */,
+/* 46 */,
+/* 47 */,
+/* 48 */,
+/* 49 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -3945,9 +4473,9 @@ const windowsRelease = release => {
 	if ((!release || release === os.release()) && ['6.1', '6.2', '6.3', '10.0'].includes(ver)) {
 		let stdout;
 		try {
-			stdout = execa.sync('powershell', ['(Get-CimInstance -ClassName Win32_OperatingSystem).caption']).stdout || '';
-		} catch (_) {
 			stdout = execa.sync('wmic', ['os', 'get', 'Caption']).stdout || '';
+		} catch (_) {
+			stdout = execa.sync('powershell', ['(Get-CimInstance -ClassName Win32_OperatingSystem).caption']).stdout || '';
 		}
 
 		const year = (stdout.match(/2008|2012|2016|2019/) || [])[0];
@@ -3964,8 +4492,8 @@ module.exports = windowsRelease;
 
 
 /***/ }),
-
-/***/ 51:
+/* 50 */,
+/* 51 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -4072,8 +4600,17 @@ var RebaseResult;
 
 
 /***/ }),
-
-/***/ 62:
+/* 52 */,
+/* 53 */,
+/* 54 */,
+/* 55 */,
+/* 56 */,
+/* 57 */,
+/* 58 */,
+/* 59 */,
+/* 60 */,
+/* 61 */,
+/* 62 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -4118,8 +4655,14 @@ var _v4 = _interopRequireDefault(__webpack_require__(384));
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /***/ }),
-
-/***/ 70:
+/* 63 */,
+/* 64 */,
+/* 65 */,
+/* 66 */,
+/* 67 */,
+/* 68 */,
+/* 69 */,
+/* 70 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = authenticationBeforeRequest;
@@ -4178,8 +4721,14 @@ function authenticationBeforeRequest(state, options) {
 
 
 /***/ }),
-
-/***/ 78:
+/* 71 */,
+/* 72 */,
+/* 73 */,
+/* 74 */,
+/* 75 */,
+/* 76 */,
+/* 77 */,
+/* 78 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -17382,15 +17931,54 @@ exports.restEndpointMethods = restEndpointMethods;
 
 
 /***/ }),
+/* 79 */,
+/* 80 */,
+/* 81 */,
+/* 82 */
+/***/ (function(module) {
 
-/***/ 87:
+module.exports = class HttpError extends Error {
+  constructor (message, code, headers) {
+    super(message)
+
+    // Maintains proper stack trace (only available on V8)
+    /* istanbul ignore next */
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor)
+    }
+
+    this.name = 'HttpError'
+    this.code = code
+    this.headers = headers
+  }
+}
+
+
+/***/ }),
+/* 83 */,
+/* 84 */,
+/* 85 */,
+/* 86 */,
+/* 87 */
 /***/ (function(module) {
 
 module.exports = require("os");
 
 /***/ }),
-
-/***/ 101:
+/* 88 */,
+/* 89 */,
+/* 90 */,
+/* 91 */,
+/* 92 */,
+/* 93 */,
+/* 94 */,
+/* 95 */,
+/* 96 */,
+/* 97 */,
+/* 98 */,
+/* 99 */,
+/* 100 */,
+/* 101 */
 /***/ (function(module) {
 
 "use strict";
@@ -17418,8 +18006,7 @@ isStream.transform = function (stream) {
 
 
 /***/ }),
-
-/***/ 102:
+/* 102 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -17439,7 +18026,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -17470,8 +18057,23 @@ exports.getServerUrl = getServerUrl;
 
 
 /***/ }),
+/* 103 */,
+/* 104 */
+/***/ (function(module, __unusedexports, __webpack_require__) {
 
-/***/ 105:
+module.exports = hasFirstPage
+
+const deprecate = __webpack_require__(433)
+const getPageLinks = __webpack_require__(366)
+
+function hasFirstPage (link) {
+  deprecate(`octokit.hasFirstPage() – You can use octokit.paginate or async iterators instead: https://github.com/octokit/rest.js#pagination.`)
+  return getPageLinks(link).first
+}
+
+
+/***/ }),
+/* 105 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -18045,8 +18647,9 @@ function _getGlobal(key, defaultValue) {
 //# sourceMappingURL=tool-cache.js.map
 
 /***/ }),
-
-/***/ 108:
+/* 106 */,
+/* 107 */,
+/* 108 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -18092,8 +18695,16 @@ module.exports._enoent = enoent;
 
 
 /***/ }),
-
-/***/ 118:
+/* 109 */,
+/* 110 */,
+/* 111 */,
+/* 112 */,
+/* 113 */,
+/* 114 */,
+/* 115 */,
+/* 116 */,
+/* 117 */,
+/* 118 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -18132,8 +18743,15 @@ module.exports.default = macosRelease;
 
 
 /***/ }),
-
-/***/ 127:
+/* 119 */,
+/* 120 */,
+/* 121 */,
+/* 122 */,
+/* 123 */,
+/* 124 */,
+/* 125 */,
+/* 126 */,
+/* 127 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 const { requestLog } = __webpack_require__(510);
@@ -18182,15 +18800,485 @@ module.exports = Octokit;
 
 
 /***/ }),
-
-/***/ 129:
+/* 128 */,
+/* 129 */
 /***/ (function(module) {
 
 module.exports = require("child_process");
 
 /***/ }),
+/* 130 */,
+/* 131 */,
+/* 132 */,
+/* 133 */,
+/* 134 */,
+/* 135 */,
+/* 136 */,
+/* 137 */,
+/* 138 */,
+/* 139 */
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
 
-/***/ 145:
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createCommandManager = exports.MinimumGitVersion = void 0;
+const core = __importStar(__webpack_require__(470));
+const exec = __importStar(__webpack_require__(986));
+const fshelper = __importStar(__webpack_require__(412));
+const io = __importStar(__webpack_require__(1));
+const path = __importStar(__webpack_require__(622));
+const refHelper = __importStar(__webpack_require__(170));
+const regexpHelper = __importStar(__webpack_require__(482));
+const retryHelper = __importStar(__webpack_require__(979));
+const git_version_1 = __webpack_require__(943);
+// Auth header not supported before 2.9
+// Wire protocol v2 not supported before 2.18
+exports.MinimumGitVersion = new git_version_1.GitVersion('2.18');
+function createCommandManager(workingDirectory, lfs) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield GitCommandManager.createCommandManager(workingDirectory, lfs);
+    });
+}
+exports.createCommandManager = createCommandManager;
+class GitCommandManager {
+    // Private constructor; use createCommandManager()
+    constructor() {
+        this.gitEnv = {
+            GIT_TERMINAL_PROMPT: '0',
+            GCM_INTERACTIVE: 'Never' // Disable prompting for git credential manager
+        };
+        this.gitPath = '';
+        this.lfs = false;
+        this.workingDirectory = '';
+    }
+    branchDelete(remote, branch) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['branch', '--delete', '--force'];
+            if (remote) {
+                args.push('--remote');
+            }
+            args.push(branch);
+            yield this.execGit(args);
+        });
+    }
+    branchExists(remote, pattern) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['branch', '--list'];
+            if (remote) {
+                args.push('--remote');
+            }
+            args.push(pattern);
+            const output = yield this.execGit(args);
+            return !!output.stdout.trim();
+        });
+    }
+    branchList(remote) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const result = [];
+            // Note, this implementation uses "rev-parse --symbolic-full-name" because the output from
+            // "branch --list" is more difficult when in a detached HEAD state.
+            // Note, this implementation uses "rev-parse --symbolic-full-name" because there is a bug
+            // in Git 2.18 that causes "rev-parse --symbolic" to output symbolic full names.
+            const args = ['rev-parse', '--symbolic-full-name'];
+            if (remote) {
+                args.push('--remotes=origin');
+            }
+            else {
+                args.push('--branches');
+            }
+            const output = yield this.execGit(args);
+            for (let branch of output.stdout.trim().split('\n')) {
+                branch = branch.trim();
+                if (branch) {
+                    if (branch.startsWith('refs/heads/')) {
+                        branch = branch.substr('refs/heads/'.length);
+                    }
+                    else if (branch.startsWith('refs/remotes/')) {
+                        branch = branch.substr('refs/remotes/'.length);
+                    }
+                    result.push(branch);
+                }
+            }
+            return result;
+        });
+    }
+    checkout(ref, startPoint) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['checkout', '--progress', '--force'];
+            if (startPoint) {
+                args.push('-B', ref, startPoint);
+            }
+            else {
+                args.push(ref);
+            }
+            yield this.execGit(args);
+        });
+    }
+    checkoutDetach() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['checkout', '--detach'];
+            yield this.execGit(args);
+        });
+    }
+    config(configKey, configValue, globalConfig) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.execGit([
+                'config',
+                globalConfig ? '--global' : '--local',
+                configKey,
+                configValue
+            ]);
+        });
+    }
+    configExists(configKey, globalConfig) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const pattern = regexpHelper.escape(configKey);
+            const output = yield this.execGit([
+                'config',
+                globalConfig ? '--global' : '--local',
+                '--name-only',
+                '--get-regexp',
+                pattern
+            ], true);
+            return output.exitCode === 0;
+        });
+    }
+    fetch(refSpec, fetchDepth, remoteName) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['-c', 'protocol.version=2', 'fetch'];
+            if (!refSpec.some(x => x === refHelper.tagsRefSpec)) {
+                args.push('--no-tags');
+            }
+            args.push('--prune', '--progress', '--no-recurse-submodules');
+            if (fetchDepth && fetchDepth > 0) {
+                args.push(`--depth=${fetchDepth}`);
+            }
+            else if (fshelper.fileExistsSync(path.join(this.workingDirectory, '.git', 'shallow'))) {
+                args.push('--unshallow');
+            }
+            if (remoteName) {
+                args.push(remoteName);
+            }
+            else {
+                args.push('origin');
+            }
+            for (const arg of refSpec) {
+                args.push(arg);
+            }
+            const that = this;
+            yield retryHelper.execute(() => __awaiter(this, void 0, void 0, function* () {
+                yield that.execGit(args);
+            }));
+        });
+    }
+    getWorkingDirectory() {
+        return this.workingDirectory;
+    }
+    init() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.execGit(['init', this.workingDirectory]);
+        });
+    }
+    isDetached() {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Note, "branch --show-current" would be simpler but isn't available until Git 2.22
+            const output = yield this.execGit(['rev-parse', '--symbolic-full-name', '--verify', '--quiet', 'HEAD'], true);
+            return !output.stdout.trim().startsWith('refs/heads/');
+        });
+    }
+    lfsFetch(ref) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['lfs', 'fetch', 'origin', ref];
+            const that = this;
+            yield retryHelper.execute(() => __awaiter(this, void 0, void 0, function* () {
+                yield that.execGit(args);
+            }));
+        });
+    }
+    lfsInstall() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.execGit(['lfs', 'install', '--local']);
+        });
+    }
+    log1(options) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['log', '-1'];
+            if (options) {
+                args.push(...options);
+            }
+            const output = yield this.execGit(args);
+            return output.stdout;
+        });
+    }
+    push(remoteName, ref, options) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['push'];
+            if (options) {
+                args.push(...options);
+            }
+            if (remoteName) {
+                args.push(remoteName);
+            }
+            if (ref) {
+                args.push(ref);
+            }
+            yield this.execGit(args);
+        });
+    }
+    rebase(remoteName, ref) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const output = yield this.execGit(['rebase', `${remoteName}/${ref}`]);
+            return !output.stdout.trim().endsWith('is up to date.');
+        });
+    }
+    remoteAdd(remoteName, remoteUrl) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.execGit(['remote', 'add', remoteName, remoteUrl]);
+        });
+    }
+    removeEnvironmentVariable(name) {
+        delete this.gitEnv[name];
+    }
+    /**
+     * Resolves a ref to a SHA. For a branch or lightweight tag, the commit SHA is returned.
+     * For an annotated tag, the tag SHA is returned.
+     * @param {string} ref  For example: 'refs/heads/master' or '/refs/tags/v1'
+     * @returns {Promise<string>}
+     */
+    revParse(ref) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const output = yield this.execGit(['rev-parse', ref]);
+            return output.stdout.trim();
+        });
+    }
+    setEnvironmentVariable(name, value) {
+        this.gitEnv[name] = value;
+    }
+    shaExists(sha) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['rev-parse', '--verify', '--quiet', `${sha}^{object}`];
+            const output = yield this.execGit(args, true);
+            return output.exitCode === 0;
+        });
+    }
+    submoduleForeach(command, recursive) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['submodule', 'foreach'];
+            if (recursive) {
+                args.push('--recursive');
+            }
+            args.push(command);
+            const output = yield this.execGit(args);
+            return output.stdout;
+        });
+    }
+    submoduleSync(recursive) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['submodule', 'sync'];
+            if (recursive) {
+                args.push('--recursive');
+            }
+            yield this.execGit(args);
+        });
+    }
+    submoduleUpdate(fetchDepth, recursive) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['-c', 'protocol.version=2'];
+            args.push('submodule', 'update', '--init', '--force');
+            if (fetchDepth > 0) {
+                args.push(`--depth=${fetchDepth}`);
+            }
+            if (recursive) {
+                args.push('--recursive');
+            }
+            yield this.execGit(args);
+        });
+    }
+    tagExists(pattern) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const output = yield this.execGit(['tag', '--list', pattern]);
+            return !!output.stdout.trim();
+        });
+    }
+    tryClean() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const output = yield this.execGit(['clean', '-ffdx'], true);
+            return output.exitCode === 0;
+        });
+    }
+    tryConfigUnset(configKey, globalConfig) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const output = yield this.execGit([
+                'config',
+                globalConfig ? '--global' : '--local',
+                '--unset-all',
+                configKey
+            ], true);
+            return output.exitCode === 0;
+        });
+    }
+    tryDisableAutomaticGarbageCollection() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const output = yield this.execGit(['config', '--local', 'gc.auto', '0'], true);
+            return output.exitCode === 0;
+        });
+    }
+    tryGetFetchUrl() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const output = yield this.execGit(['config', '--local', '--get', 'remote.origin.url'], true);
+            if (output.exitCode !== 0) {
+                return '';
+            }
+            const stdout = output.stdout.trim();
+            if (stdout.includes('\n')) {
+                return '';
+            }
+            return stdout;
+        });
+    }
+    tryReset() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const output = yield this.execGit(['reset', '--hard', 'HEAD'], true);
+            return output.exitCode === 0;
+        });
+    }
+    static createCommandManager(workingDirectory, lfs) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const result = new GitCommandManager();
+            yield result.initializeCommandManager(workingDirectory, lfs);
+            return result;
+        });
+    }
+    execGit(args, allowAllExitCodes = false) {
+        return __awaiter(this, void 0, void 0, function* () {
+            fshelper.directoryExistsSync(this.workingDirectory, true);
+            const result = new GitOutput();
+            const env = {};
+            for (const key of Object.keys(process.env)) {
+                env[key] = process.env[key];
+            }
+            for (const key of Object.keys(this.gitEnv)) {
+                env[key] = this.gitEnv[key];
+            }
+            const stdout = [];
+            const options = {
+                cwd: this.workingDirectory,
+                env,
+                ignoreReturnCode: allowAllExitCodes,
+                listeners: {
+                    stdout: (data) => {
+                        stdout.push(data.toString());
+                    }
+                }
+            };
+            result.exitCode = yield exec.exec(`"${this.gitPath}"`, args, options);
+            result.stdout = stdout.join('');
+            return result;
+        });
+    }
+    initializeCommandManager(workingDirectory, lfs) {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.workingDirectory = workingDirectory;
+            // Git-lfs will try to pull down assets if any of the local/user/system setting exist.
+            // If the user didn't enable `LFS` in their pipeline definition, disable LFS fetch/checkout.
+            this.lfs = lfs;
+            if (!this.lfs) {
+                this.gitEnv['GIT_LFS_SKIP_SMUDGE'] = '1';
+            }
+            this.gitPath = yield io.which('git', true);
+            // Git version
+            core.debug('Getting git version');
+            let gitVersion = new git_version_1.GitVersion();
+            let gitOutput = yield this.execGit(['version']);
+            let stdout = gitOutput.stdout.trim();
+            if (!stdout.includes('\n')) {
+                const match = stdout.match(/\d+\.\d+(\.\d+)?/);
+                if (match) {
+                    gitVersion = new git_version_1.GitVersion(match[0]);
+                }
+            }
+            if (!gitVersion.isValid()) {
+                throw new Error('Unable to determine git version');
+            }
+            // Minimum git version
+            if (!gitVersion.checkMinimum(exports.MinimumGitVersion)) {
+                throw new Error(`Minimum required git version is ${exports.MinimumGitVersion}. Your git ('${this.gitPath}') is ${gitVersion}`);
+            }
+            if (this.lfs) {
+                // Git-lfs version
+                core.debug('Getting git-lfs version');
+                let gitLfsVersion = new git_version_1.GitVersion();
+                const gitLfsPath = yield io.which('git-lfs', true);
+                gitOutput = yield this.execGit(['lfs', 'version']);
+                stdout = gitOutput.stdout.trim();
+                if (!stdout.includes('\n')) {
+                    const match = stdout.match(/\d+\.\d+(\.\d+)?/);
+                    if (match) {
+                        gitLfsVersion = new git_version_1.GitVersion(match[0]);
+                    }
+                }
+                if (!gitLfsVersion.isValid()) {
+                    throw new Error('Unable to determine git-lfs version');
+                }
+                // Minimum git-lfs version
+                // Note:
+                // - Auth header not supported before 2.1
+                const minimumGitLfsVersion = new git_version_1.GitVersion('2.1');
+                if (!gitLfsVersion.checkMinimum(minimumGitLfsVersion)) {
+                    throw new Error(`Minimum required git-lfs version is ${minimumGitLfsVersion}. Your git-lfs ('${gitLfsPath}') is ${gitLfsVersion}`);
+                }
+            }
+            // Set the user agent
+            const gitHttpUserAgent = `git/${gitVersion} (github-actions-checkout)`;
+            core.debug(`Set git useragent to: ${gitHttpUserAgent}`);
+            this.gitEnv['GIT_HTTP_USER_AGENT'] = gitHttpUserAgent;
+        });
+    }
+}
+class GitOutput {
+    constructor() {
+        this.stdout = '';
+        this.exitCode = 0;
+    }
+}
+
+
+/***/ }),
+/* 140 */,
+/* 141 */,
+/* 142 */,
+/* 143 */,
+/* 144 */,
+/* 145 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -18247,8 +19335,8 @@ module.exports.MaxBufferError = MaxBufferError;
 
 
 /***/ }),
-
-/***/ 147:
+/* 146 */,
+/* 147 */
 /***/ (function(module) {
 
 module.exports = function btoa(str) {
@@ -18257,8 +19345,9 @@ module.exports = function btoa(str) {
 
 
 /***/ }),
-
-/***/ 150:
+/* 148 */,
+/* 149 */,
+/* 150 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -18626,8 +19715,14 @@ module.exports.shellSync = (cmd, opts) => handleShell(module.exports.sync, cmd, 
 
 
 /***/ }),
-
-/***/ 158:
+/* 151 */,
+/* 152 */,
+/* 153 */,
+/* 154 */,
+/* 155 */,
+/* 156 */,
+/* 157 */,
+/* 158 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -18685,8 +19780,7 @@ module.exports = options => {
 
 
 /***/ }),
-
-/***/ 159:
+/* 159 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -18743,8 +19837,15 @@ module.exports.MaxBufferError = MaxBufferError;
 
 
 /***/ }),
-
-/***/ 168:
+/* 160 */,
+/* 161 */,
+/* 162 */,
+/* 163 */,
+/* 164 */,
+/* 165 */,
+/* 166 */,
+/* 167 */,
+/* 168 */
 /***/ (function(module) {
 
 "use strict";
@@ -18792,8 +19893,202 @@ module.exports = opts => {
 
 
 /***/ }),
+/* 169 */,
+/* 170 */
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
 
-/***/ 177:
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.testRef = exports.getRefSpec = exports.getRefSpecForAllHistory = exports.getCheckoutInfo = exports.tagsRefSpec = void 0;
+const core = __importStar(__webpack_require__(470));
+exports.tagsRefSpec = '+refs/tags/*:refs/tags/*';
+function getCheckoutInfo(git, ref, commit) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!git) {
+            throw new Error('Arg git cannot be empty');
+        }
+        if (!ref && !commit) {
+            throw new Error('Args ref and commit cannot both be empty');
+        }
+        const result = {};
+        const upperRef = (ref || '').toUpperCase();
+        // SHA only
+        if (!ref) {
+            result.ref = commit;
+        }
+        // refs/heads/
+        else if (upperRef.startsWith('REFS/HEADS/')) {
+            const branch = ref.substring('refs/heads/'.length);
+            result.ref = branch;
+            result.startPoint = `refs/remotes/origin/${branch}`;
+        }
+        // refs/pull/
+        else if (upperRef.startsWith('REFS/PULL/')) {
+            const branch = ref.substring('refs/pull/'.length);
+            result.ref = `refs/remotes/pull/${branch}`;
+        }
+        // refs/tags/
+        else if (upperRef.startsWith('REFS/')) {
+            result.ref = ref;
+        }
+        // Unqualified ref, check for a matching branch or tag
+        else {
+            if (yield git.branchExists(true, `origin/${ref}`)) {
+                result.ref = ref;
+                result.startPoint = `refs/remotes/origin/${ref}`;
+            }
+            else if (yield git.tagExists(`${ref}`)) {
+                result.ref = `refs/tags/${ref}`;
+            }
+            else {
+                throw new Error(`A branch or tag with the name '${ref}' could not be found`);
+            }
+        }
+        return result;
+    });
+}
+exports.getCheckoutInfo = getCheckoutInfo;
+function getRefSpecForAllHistory(ref, commit) {
+    const result = ['+refs/heads/*:refs/remotes/origin/*', exports.tagsRefSpec];
+    if (ref && ref.toUpperCase().startsWith('REFS/PULL/')) {
+        const branch = ref.substring('refs/pull/'.length);
+        result.push(`+${commit || ref}:refs/remotes/pull/${branch}`);
+    }
+    return result;
+}
+exports.getRefSpecForAllHistory = getRefSpecForAllHistory;
+function getRefSpec(ref, commit) {
+    if (!ref && !commit) {
+        throw new Error('Args ref and commit cannot both be empty');
+    }
+    const upperRef = (ref || '').toUpperCase();
+    // SHA
+    if (commit) {
+        // refs/heads
+        if (upperRef.startsWith('REFS/HEADS/')) {
+            const branch = ref.substring('refs/heads/'.length);
+            return [`+${commit}:refs/remotes/origin/${branch}`];
+        }
+        // refs/pull/
+        else if (upperRef.startsWith('REFS/PULL/')) {
+            const branch = ref.substring('refs/pull/'.length);
+            return [`+${commit}:refs/remotes/pull/${branch}`];
+        }
+        // refs/tags/
+        else if (upperRef.startsWith('REFS/TAGS/')) {
+            return [`+${commit}:${ref}`];
+        }
+        // Otherwise no destination ref
+        else {
+            return [commit];
+        }
+    }
+    // Unqualified ref, check for a matching branch or tag
+    else if (!upperRef.startsWith('REFS/')) {
+        return [
+            `+refs/heads/${ref}*:refs/remotes/origin/${ref}*`,
+            `+refs/tags/${ref}*:refs/tags/${ref}*`
+        ];
+    }
+    // refs/heads/
+    else if (upperRef.startsWith('REFS/HEADS/')) {
+        const branch = ref.substring('refs/heads/'.length);
+        return [`+${ref}:refs/remotes/origin/${branch}`];
+    }
+    // refs/pull/
+    else if (upperRef.startsWith('REFS/PULL/')) {
+        const branch = ref.substring('refs/pull/'.length);
+        return [`+${ref}:refs/remotes/pull/${branch}`];
+    }
+    // refs/tags/
+    else {
+        return [`+${ref}:${ref}`];
+    }
+}
+exports.getRefSpec = getRefSpec;
+/**
+ * Tests whether the initial fetch created the ref at the expected commit
+ */
+function testRef(git, ref, commit) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!git) {
+            throw new Error('Arg git cannot be empty');
+        }
+        if (!ref && !commit) {
+            throw new Error('Args ref and commit cannot both be empty');
+        }
+        // No SHA? Nothing to test
+        if (!commit) {
+            return true;
+        }
+        // SHA only?
+        else if (!ref) {
+            return yield git.shaExists(commit);
+        }
+        const upperRef = ref.toUpperCase();
+        // refs/heads/
+        if (upperRef.startsWith('REFS/HEADS/')) {
+            const branch = ref.substring('refs/heads/'.length);
+            return ((yield git.branchExists(true, `origin/${branch}`)) &&
+                commit === (yield git.revParse(`refs/remotes/origin/${branch}`)));
+        }
+        // refs/pull/
+        else if (upperRef.startsWith('REFS/PULL/')) {
+            // Assume matches because fetched using the commit
+            return true;
+        }
+        // refs/tags/
+        else if (upperRef.startsWith('REFS/TAGS/')) {
+            const tagName = ref.substring('refs/tags/'.length);
+            return ((yield git.tagExists(tagName)) && commit === (yield git.revParse(ref)));
+        }
+        // Unexpected
+        else {
+            core.debug(`Unexpected ref format '${ref}' when testing ref info`);
+            return true;
+        }
+    });
+}
+exports.testRef = testRef;
+
+
+/***/ }),
+/* 171 */,
+/* 172 */,
+/* 173 */,
+/* 174 */,
+/* 175 */,
+/* 176 */,
+/* 177 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -18869,8 +20164,17 @@ exports.RetryHelper = RetryHelper;
 //# sourceMappingURL=retry-helper.js.map
 
 /***/ }),
-
-/***/ 188:
+/* 178 */,
+/* 179 */,
+/* 180 */,
+/* 181 */,
+/* 182 */,
+/* 183 */,
+/* 184 */,
+/* 185 */,
+/* 186 */,
+/* 187 */,
+/* 188 */
 /***/ (function(module) {
 
 "use strict";
@@ -18888,8 +20192,15 @@ module.exports = function(fn) {
 }
 
 /***/ }),
-
-/***/ 197:
+/* 189 */,
+/* 190 */,
+/* 191 */,
+/* 192 */,
+/* 193 */,
+/* 194 */,
+/* 195 */,
+/* 196 */,
+/* 197 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = isexe
@@ -18936,8 +20247,7 @@ function checkMode (stat, options) {
 
 
 /***/ }),
-
-/***/ 198:
+/* 198 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -18973,9 +20283,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(__webpack_require__(470));
 const io = __importStar(__webpack_require__(1));
+const actionsGit = __importStar(__webpack_require__(658));
 const inputHelper = __importStar(__webpack_require__(932));
 const gitSourceProvider = __importStar(__webpack_require__(547));
-const gitCommandManager = __importStar(__webpack_require__(524));
 const inputValidator = __importStar(__webpack_require__(339));
 const pulls_helper_1 = __webpack_require__(867);
 const rebase_helper_1 = __webpack_require__(51);
@@ -19006,7 +20316,7 @@ function run() {
                 core.debug(`sourceSettings: ${util_1.inspect(sourceSettings)}`);
                 yield gitSourceProvider.getSource(sourceSettings);
                 // Rebase
-                const git = yield gitCommandManager.createCommandManager(sourceSettings.repositoryPath, sourceSettings.lfs);
+                const git = yield actionsGit.createGitCommandManager(sourceSettings.repositoryPath, sourceSettings.lfs);
                 const rebaseHelper = new rebase_helper_1.RebaseHelper(git);
                 let rebasedCount = 0;
                 for (const pull of pulls) {
@@ -19033,8 +20343,8 @@ run();
 
 
 /***/ }),
-
-/***/ 200:
+/* 199 */,
+/* 200 */
 /***/ (function(__unusedmodule, exports) {
 
 "use strict";
@@ -19061,8 +20371,7 @@ exports.Deprecation = Deprecation;
 
 
 /***/ }),
-
-/***/ 201:
+/* 201 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -19101,8 +20410,7 @@ module.exports = readShebang;
 
 
 /***/ }),
-
-/***/ 202:
+/* 202 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -19373,8 +20681,11 @@ exports.debug = debug; // for test
 
 
 /***/ }),
-
-/***/ 207:
+/* 203 */,
+/* 204 */,
+/* 205 */,
+/* 206 */,
+/* 207 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -19486,8 +20797,8 @@ exports._readLinuxVersionFile = _readLinuxVersionFile;
 //# sourceMappingURL=manifest.js.map
 
 /***/ }),
-
-/***/ 209:
+/* 208 */,
+/* 209 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -19509,15 +20820,14 @@ var _default = v3;
 exports.default = _default;
 
 /***/ }),
-
-/***/ 211:
+/* 210 */,
+/* 211 */
 /***/ (function(module) {
 
 module.exports = require("https");
 
 /***/ }),
-
-/***/ 212:
+/* 212 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -19599,8 +20909,12 @@ function _default(name, version, hashfunc) {
 }
 
 /***/ }),
-
-/***/ 218:
+/* 213 */,
+/* 214 */,
+/* 215 */,
+/* 216 */,
+/* 217 */,
+/* 218 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -19629,8 +20943,13 @@ exports.getUserAgent = getUserAgent;
 
 
 /***/ }),
-
-/***/ 225:
+/* 219 */,
+/* 220 */,
+/* 221 */,
+/* 222 */,
+/* 223 */,
+/* 224 */,
+/* 225 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -19831,8 +21150,16 @@ function isUnixExecutable(stats) {
 //# sourceMappingURL=io-util.js.map
 
 /***/ }),
-
-/***/ 235:
+/* 226 */,
+/* 227 */,
+/* 228 */,
+/* 229 */,
+/* 230 */,
+/* 231 */,
+/* 232 */,
+/* 233 */,
+/* 234 */,
+/* 235 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -19843,7 +21170,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 var request = __webpack_require__(451);
 var universalUserAgent = __webpack_require__(218);
 
-const VERSION = "4.5.0";
+const VERSION = "4.5.1";
 
 class GraphqlError extends Error {
   constructor(request, response) {
@@ -19924,8 +21251,7 @@ exports.withCustomRequest = withCustomRequest;
 
 
 /***/ }),
-
-/***/ 236:
+/* 236 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 const factory = __webpack_require__(388);
@@ -19934,8 +21260,7 @@ module.exports = factory();
 
 
 /***/ }),
-
-/***/ 237:
+/* 237 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -20231,8 +21556,26 @@ function copyFile(srcFile, destFile, force) {
 //# sourceMappingURL=io.js.map
 
 /***/ }),
-
-/***/ 257:
+/* 238 */,
+/* 239 */,
+/* 240 */,
+/* 241 */,
+/* 242 */,
+/* 243 */,
+/* 244 */,
+/* 245 */,
+/* 246 */,
+/* 247 */,
+/* 248 */,
+/* 249 */,
+/* 250 */,
+/* 251 */,
+/* 252 */,
+/* 253 */,
+/* 254 */,
+/* 255 */,
+/* 256 */,
+/* 257 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = hasPreviousPage
@@ -20247,8 +21590,9 @@ function hasPreviousPage (link) {
 
 
 /***/ }),
-
-/***/ 260:
+/* 258 */,
+/* 259 */,
+/* 260 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 // Note: since nyc uses this module to output coverage, any lines
@@ -20417,8 +21761,8 @@ function processEmit (ev, arg) {
 
 
 /***/ }),
-
-/***/ 262:
+/* 261 */,
+/* 262 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -20480,8 +21824,10 @@ exports.RequestError = RequestError;
 
 
 /***/ }),
-
-/***/ 266:
+/* 263 */,
+/* 264 */,
+/* 265 */,
+/* 266 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = which
@@ -20622,8 +21968,9 @@ function whichSync (cmd, opt) {
 
 
 /***/ }),
-
-/***/ 269:
+/* 267 */,
+/* 268 */,
+/* 269 */
 /***/ (function(module) {
 
 /**
@@ -21525,8 +22872,9 @@ module.exports = uniq;
 
 
 /***/ }),
-
-/***/ 272:
+/* 270 */,
+/* 271 */,
+/* 272 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 var rng = __webpack_require__(816);
@@ -21561,8 +22909,10 @@ module.exports = v4;
 
 
 /***/ }),
-
-/***/ 276:
+/* 273 */,
+/* 274 */,
+/* 275 */,
+/* 276 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -23211,8 +24561,8 @@ exports.FetchError = FetchError;
 
 
 /***/ }),
-
-/***/ 278:
+/* 277 */,
+/* 278 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -23232,7 +24582,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -23481,8 +24831,8 @@ function isGhes() {
 
 
 /***/ }),
-
-/***/ 280:
+/* 279 */,
+/* 280 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -24088,8 +25438,10 @@ class ExecState extends events.EventEmitter {
 //# sourceMappingURL=toolrunner.js.map
 
 /***/ }),
-
-/***/ 284:
+/* 281 */,
+/* 282 */,
+/* 283 */,
+/* 284 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -24139,8 +25491,34 @@ exports.exec = exec;
 //# sourceMappingURL=exec.js.map
 
 /***/ }),
-
-/***/ 312:
+/* 285 */,
+/* 286 */,
+/* 287 */,
+/* 288 */,
+/* 289 */,
+/* 290 */,
+/* 291 */,
+/* 292 */,
+/* 293 */,
+/* 294 */,
+/* 295 */,
+/* 296 */,
+/* 297 */,
+/* 298 */,
+/* 299 */,
+/* 300 */,
+/* 301 */,
+/* 302 */,
+/* 303 */,
+/* 304 */,
+/* 305 */,
+/* 306 */,
+/* 307 */,
+/* 308 */,
+/* 309 */,
+/* 310 */,
+/* 311 */,
+/* 312 */
 /***/ (function(module) {
 
 "use strict";
@@ -24160,8 +25538,9 @@ module.exports = opts => {
 
 
 /***/ }),
-
-/***/ 315:
+/* 313 */,
+/* 314 */,
+/* 315 */
 /***/ (function(module) {
 
 module.exports = validateAuth;
@@ -24188,8 +25567,11 @@ function validateAuth(auth) {
 
 
 /***/ }),
-
-/***/ 320:
+/* 316 */,
+/* 317 */,
+/* 318 */,
+/* 319 */,
+/* 320 */
 /***/ (function(module) {
 
 module.exports = addHook
@@ -24241,8 +25623,9 @@ function addHook (state, kind, name, hook) {
 
 
 /***/ }),
-
-/***/ 323:
+/* 321 */,
+/* 322 */,
+/* 323 */
 /***/ (function(module) {
 
 "use strict";
@@ -24270,8 +25653,9 @@ isStream.transform = function (stream) {
 
 
 /***/ }),
-
-/***/ 326:
+/* 324 */,
+/* 325 */,
+/* 326 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -24336,8 +25720,9 @@ exports.checkBypass = checkBypass;
 
 
 /***/ }),
-
-/***/ 329:
+/* 327 */,
+/* 328 */,
+/* 329 */
 /***/ (function(module) {
 
 "use strict";
@@ -24392,8 +25777,9 @@ module.exports = isPlainObject;
 
 
 /***/ }),
-
-/***/ 332:
+/* 330 */,
+/* 331 */,
+/* 332 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -24455,8 +25841,13 @@ exports.RequestError = RequestError;
 
 
 /***/ }),
-
-/***/ 339:
+/* 333 */,
+/* 334 */,
+/* 335 */,
+/* 336 */,
+/* 337 */,
+/* 338 */,
+/* 339 */
 /***/ (function(__unusedmodule, exports) {
 
 "use strict";
@@ -24479,8 +25870,22 @@ exports.parseHead = parseHead;
 
 
 /***/ }),
-
-/***/ 355:
+/* 340 */,
+/* 341 */,
+/* 342 */,
+/* 343 */,
+/* 344 */,
+/* 345 */,
+/* 346 */,
+/* 347 */,
+/* 348 */,
+/* 349 */,
+/* 350 */,
+/* 351 */,
+/* 352 */,
+/* 353 */,
+/* 354 */,
+/* 355 */
 /***/ (function(__unusedmodule, exports) {
 
 "use strict";
@@ -24536,22 +25941,27 @@ exports.createTokenAuth = createTokenAuth;
 
 
 /***/ }),
-
-/***/ 357:
+/* 356 */,
+/* 357 */
 /***/ (function(module) {
 
 module.exports = require("assert");
 
 /***/ }),
-
-/***/ 360:
+/* 358 */,
+/* 359 */,
+/* 360 */
 /***/ (function(module) {
 
-module.exports = {"_from":"@octokit/rest@^16.43.1","_id":"@octokit/rest@16.43.1","_inBundle":false,"_integrity":"sha512-gfFKwRT/wFxq5qlNjnW2dh+qh74XgTQ2B179UX5K1HYCluioWj8Ndbgqw2PVqa1NnVJkGHp2ovMpVn/DImlmkw==","_location":"/@octokit/rest","_phantomChildren":{"deprecation":"2.3.1","once":"1.4.0","os-name":"3.1.0"},"_requested":{"type":"range","registry":true,"raw":"@octokit/rest@^16.43.1","name":"@octokit/rest","escapedName":"@octokit%2frest","scope":"@octokit","rawSpec":"^16.43.1","saveSpec":null,"fetchSpec":"^16.43.1"},"_requiredBy":["/@actions/github"],"_resolved":"https://registry.npmjs.org/@octokit/rest/-/rest-16.43.1.tgz","_shasum":"3b11e7d1b1ac2bbeeb23b08a17df0b20947eda6b","_spec":"@octokit/rest@^16.43.1","_where":"/home/runner/work/rebase/rebase/node_modules/checkout/node_modules/@actions/github","author":{"name":"Gregor Martynus","url":"https://github.com/gr2m"},"bugs":{"url":"https://github.com/octokit/rest.js/issues"},"bundleDependencies":false,"bundlesize":[{"path":"./dist/octokit-rest.min.js.gz","maxSize":"33 kB"}],"contributors":[{"name":"Mike de Boer","email":"info@mikedeboer.nl"},{"name":"Fabian Jakobs","email":"fabian@c9.io"},{"name":"Joe Gallo","email":"joe@brassafrax.com"},{"name":"Gregor Martynus","url":"https://github.com/gr2m"}],"dependencies":{"@octokit/auth-token":"^2.4.0","@octokit/plugin-paginate-rest":"^1.1.1","@octokit/plugin-request-log":"^1.0.0","@octokit/plugin-rest-endpoint-methods":"2.4.0","@octokit/request":"^5.2.0","@octokit/request-error":"^1.0.2","atob-lite":"^2.0.0","before-after-hook":"^2.0.0","btoa-lite":"^1.0.0","deprecation":"^2.0.0","lodash.get":"^4.4.2","lodash.set":"^4.3.2","lodash.uniq":"^4.5.0","octokit-pagination-methods":"^1.1.0","once":"^1.4.0","universal-user-agent":"^4.0.0"},"deprecated":false,"description":"GitHub REST API client for Node.js","devDependencies":{"@gimenete/type-writer":"^0.1.3","@octokit/auth":"^1.1.1","@octokit/fixtures-server":"^5.0.6","@octokit/graphql":"^4.2.0","@types/node":"^13.1.0","bundlesize":"^0.18.0","chai":"^4.1.2","compression-webpack-plugin":"^3.1.0","cypress":"^3.0.0","glob":"^7.1.2","http-proxy-agent":"^4.0.0","lodash.camelcase":"^4.3.0","lodash.merge":"^4.6.1","lodash.upperfirst":"^4.3.1","lolex":"^5.1.2","mkdirp":"^1.0.0","mocha":"^7.0.1","mustache":"^4.0.0","nock":"^11.3.3","npm-run-all":"^4.1.2","nyc":"^15.0.0","prettier":"^1.14.2","proxy":"^1.0.0","semantic-release":"^17.0.0","sinon":"^8.0.0","sinon-chai":"^3.0.0","sort-keys":"^4.0.0","string-to-arraybuffer":"^1.0.0","string-to-jsdoc-comment":"^1.0.0","typescript":"^3.3.1","webpack":"^4.0.0","webpack-bundle-analyzer":"^3.0.0","webpack-cli":"^3.0.0"},"files":["index.js","index.d.ts","lib","plugins"],"homepage":"https://github.com/octokit/rest.js#readme","keywords":["octokit","github","rest","api-client"],"license":"MIT","name":"@octokit/rest","nyc":{"ignore":["test"]},"publishConfig":{"access":"public"},"release":{"publish":["@semantic-release/npm",{"path":"@semantic-release/github","assets":["dist/*","!dist/*.map.gz"]}]},"repository":{"type":"git","url":"git+https://github.com/octokit/rest.js.git"},"scripts":{"build":"npm-run-all build:*","build:browser":"npm-run-all build:browser:*","build:browser:development":"webpack --mode development --entry . --output-library=Octokit --output=./dist/octokit-rest.js --profile --json > dist/bundle-stats.json","build:browser:production":"webpack --mode production --entry . --plugin=compression-webpack-plugin --output-library=Octokit --output-path=./dist --output-filename=octokit-rest.min.js --devtool source-map","build:ts":"npm run -s update-endpoints:typescript","coverage":"nyc report --reporter=html && open coverage/index.html","generate-bundle-report":"webpack-bundle-analyzer dist/bundle-stats.json --mode=static --no-open --report dist/bundle-report.html","lint":"prettier --check '{lib,plugins,scripts,test}/**/*.{js,json,ts}' 'docs/*.{js,json}' 'docs/src/**/*' index.js README.md package.json","lint:fix":"prettier --write '{lib,plugins,scripts,test}/**/*.{js,json,ts}' 'docs/*.{js,json}' 'docs/src/**/*' index.js README.md package.json","postvalidate:ts":"tsc --noEmit --target es6 test/typescript-validate.ts","prebuild:browser":"mkdirp dist/","pretest":"npm run -s lint","prevalidate:ts":"npm run -s build:ts","start-fixtures-server":"octokit-fixtures-server","test":"nyc mocha test/mocha-node-setup.js \"test/*/**/*-test.js\"","test:browser":"cypress run --browser chrome","update-endpoints":"npm-run-all update-endpoints:*","update-endpoints:fetch-json":"node scripts/update-endpoints/fetch-json","update-endpoints:typescript":"node scripts/update-endpoints/typescript","validate:ts":"tsc --target es6 --noImplicitAny index.d.ts"},"types":"index.d.ts","version":"16.43.1"};
+module.exports = {"_from":"@octokit/rest@^16.43.1","_id":"@octokit/rest@16.43.1","_inBundle":false,"_integrity":"sha512-gfFKwRT/wFxq5qlNjnW2dh+qh74XgTQ2B179UX5K1HYCluioWj8Ndbgqw2PVqa1NnVJkGHp2ovMpVn/DImlmkw==","_location":"/@octokit/rest","_phantomChildren":{"deprecation":"2.3.1","once":"1.4.0","os-name":"3.1.0"},"_requested":{"type":"range","registry":true,"raw":"@octokit/rest@^16.43.1","name":"@octokit/rest","escapedName":"@octokit%2frest","scope":"@octokit","rawSpec":"^16.43.1","saveSpec":null,"fetchSpec":"^16.43.1"},"_requiredBy":["/@actions/github"],"_resolved":"https://registry.npmjs.org/@octokit/rest/-/rest-16.43.1.tgz","_shasum":"3b11e7d1b1ac2bbeeb23b08a17df0b20947eda6b","_spec":"@octokit/rest@^16.43.1","_where":"/Users/peter.evans/git/rebase/node_modules/checkout/node_modules/@actions/github","author":{"name":"Gregor Martynus","url":"https://github.com/gr2m"},"bugs":{"url":"https://github.com/octokit/rest.js/issues"},"bundleDependencies":false,"bundlesize":[{"path":"./dist/octokit-rest.min.js.gz","maxSize":"33 kB"}],"contributors":[{"name":"Mike de Boer","email":"info@mikedeboer.nl"},{"name":"Fabian Jakobs","email":"fabian@c9.io"},{"name":"Joe Gallo","email":"joe@brassafrax.com"},{"name":"Gregor Martynus","url":"https://github.com/gr2m"}],"dependencies":{"@octokit/auth-token":"^2.4.0","@octokit/plugin-paginate-rest":"^1.1.1","@octokit/plugin-request-log":"^1.0.0","@octokit/plugin-rest-endpoint-methods":"2.4.0","@octokit/request":"^5.2.0","@octokit/request-error":"^1.0.2","atob-lite":"^2.0.0","before-after-hook":"^2.0.0","btoa-lite":"^1.0.0","deprecation":"^2.0.0","lodash.get":"^4.4.2","lodash.set":"^4.3.2","lodash.uniq":"^4.5.0","octokit-pagination-methods":"^1.1.0","once":"^1.4.0","universal-user-agent":"^4.0.0"},"deprecated":false,"description":"GitHub REST API client for Node.js","devDependencies":{"@gimenete/type-writer":"^0.1.3","@octokit/auth":"^1.1.1","@octokit/fixtures-server":"^5.0.6","@octokit/graphql":"^4.2.0","@types/node":"^13.1.0","bundlesize":"^0.18.0","chai":"^4.1.2","compression-webpack-plugin":"^3.1.0","cypress":"^3.0.0","glob":"^7.1.2","http-proxy-agent":"^4.0.0","lodash.camelcase":"^4.3.0","lodash.merge":"^4.6.1","lodash.upperfirst":"^4.3.1","lolex":"^5.1.2","mkdirp":"^1.0.0","mocha":"^7.0.1","mustache":"^4.0.0","nock":"^11.3.3","npm-run-all":"^4.1.2","nyc":"^15.0.0","prettier":"^1.14.2","proxy":"^1.0.0","semantic-release":"^17.0.0","sinon":"^8.0.0","sinon-chai":"^3.0.0","sort-keys":"^4.0.0","string-to-arraybuffer":"^1.0.0","string-to-jsdoc-comment":"^1.0.0","typescript":"^3.3.1","webpack":"^4.0.0","webpack-bundle-analyzer":"^3.0.0","webpack-cli":"^3.0.0"},"files":["index.js","index.d.ts","lib","plugins"],"homepage":"https://github.com/octokit/rest.js#readme","keywords":["octokit","github","rest","api-client"],"license":"MIT","name":"@octokit/rest","nyc":{"ignore":["test"]},"publishConfig":{"access":"public"},"release":{"publish":["@semantic-release/npm",{"path":"@semantic-release/github","assets":["dist/*","!dist/*.map.gz"]}]},"repository":{"type":"git","url":"git+https://github.com/octokit/rest.js.git"},"scripts":{"build":"npm-run-all build:*","build:browser":"npm-run-all build:browser:*","build:browser:development":"webpack --mode development --entry . --output-library=Octokit --output=./dist/octokit-rest.js --profile --json > dist/bundle-stats.json","build:browser:production":"webpack --mode production --entry . --plugin=compression-webpack-plugin --output-library=Octokit --output-path=./dist --output-filename=octokit-rest.min.js --devtool source-map","build:ts":"npm run -s update-endpoints:typescript","coverage":"nyc report --reporter=html && open coverage/index.html","generate-bundle-report":"webpack-bundle-analyzer dist/bundle-stats.json --mode=static --no-open --report dist/bundle-report.html","lint":"prettier --check '{lib,plugins,scripts,test}/**/*.{js,json,ts}' 'docs/*.{js,json}' 'docs/src/**/*' index.js README.md package.json","lint:fix":"prettier --write '{lib,plugins,scripts,test}/**/*.{js,json,ts}' 'docs/*.{js,json}' 'docs/src/**/*' index.js README.md package.json","postvalidate:ts":"tsc --noEmit --target es6 test/typescript-validate.ts","prebuild:browser":"mkdirp dist/","pretest":"npm run -s lint","prevalidate:ts":"npm run -s build:ts","start-fixtures-server":"octokit-fixtures-server","test":"nyc mocha test/mocha-node-setup.js \"test/*/**/*-test.js\"","test:browser":"cypress run --browser chrome","update-endpoints":"npm-run-all update-endpoints:*","update-endpoints:fetch-json":"node scripts/update-endpoints/fetch-json","update-endpoints:typescript":"node scripts/update-endpoints/typescript","validate:ts":"tsc --target es6 --noImplicitAny index.d.ts"},"types":"index.d.ts","version":"16.43.1"};
 
 /***/ }),
-
-/***/ 366:
+/* 361 */,
+/* 362 */,
+/* 363 */,
+/* 364 */,
+/* 365 */,
+/* 366 */
 /***/ (function(module) {
 
 module.exports = getPageLinks
@@ -24572,8 +25982,7 @@ function getPageLinks (link) {
 
 
 /***/ }),
-
-/***/ 367:
+/* 367 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = getNextPage
@@ -24586,8 +25995,8 @@ function getNextPage (octokit, link, headers) {
 
 
 /***/ }),
-
-/***/ 369:
+/* 368 */,
+/* 369 */
 /***/ (function(module) {
 
 /**
@@ -25583,8 +26992,21 @@ module.exports = set;
 
 
 /***/ }),
-
-/***/ 384:
+/* 370 */,
+/* 371 */,
+/* 372 */,
+/* 373 */,
+/* 374 */,
+/* 375 */,
+/* 376 */,
+/* 377 */,
+/* 378 */,
+/* 379 */,
+/* 380 */,
+/* 381 */,
+/* 382 */,
+/* 383 */,
+/* 384 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -25606,8 +27028,7 @@ var _default = v5;
 exports.default = _default;
 
 /***/ }),
-
-/***/ 385:
+/* 385 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -25968,7 +27389,7 @@ function withDefaults(oldDefaults, newDefaults) {
   });
 }
 
-const VERSION = "6.0.2";
+const VERSION = "6.0.3";
 
 const userAgent = `octokit-endpoint.js/${VERSION} ${universalUserAgent.getUserAgent()}`; // DEFAULTS has all properties set that EndpointOptions has, except url.
 // So we use RequestParameters and add method as additional required property.
@@ -25993,8 +27414,9 @@ exports.endpoint = endpoint;
 
 
 /***/ }),
-
-/***/ 388:
+/* 386 */,
+/* 387 */,
+/* 388 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = factory;
@@ -26010,8 +27432,7 @@ function factory(plugins) {
 
 
 /***/ }),
-
-/***/ 389:
+/* 389 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -26050,8 +27471,7 @@ module.exports = readShebang;
 
 
 /***/ }),
-
-/***/ 390:
+/* 390 */
 /***/ (function(__unusedmodule, exports) {
 
 "use strict";
@@ -26084,8 +27504,11 @@ var _default = bytesToUuid;
 exports.default = _default;
 
 /***/ }),
-
-/***/ 395:
+/* 391 */,
+/* 392 */,
+/* 393 */,
+/* 394 */,
+/* 395 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -26105,7 +27528,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -26391,8 +27814,18 @@ class GitAuthHelper {
 
 
 /***/ }),
-
-/***/ 407:
+/* 396 */,
+/* 397 */,
+/* 398 */,
+/* 399 */,
+/* 400 */,
+/* 401 */,
+/* 402 */,
+/* 403 */,
+/* 404 */,
+/* 405 */,
+/* 406 */,
+/* 407 */
 /***/ (function(__unusedmodule, exports) {
 
 "use strict";
@@ -26471,8 +27904,7 @@ exports.GitVersion = GitVersion;
 
 
 /***/ }),
-
-/***/ 408:
+/* 408 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = isexe
@@ -26520,8 +27952,9 @@ function sync (path, options) {
 
 
 /***/ }),
-
-/***/ 411:
+/* 409 */,
+/* 410 */,
+/* 411 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = paginatePlugin;
@@ -26534,22 +27967,123 @@ function paginatePlugin(octokit) {
 
 
 /***/ }),
+/* 412 */
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
 
-/***/ 413:
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.fileExistsSync = exports.existsSync = exports.directoryExistsSync = void 0;
+const fs = __importStar(__webpack_require__(747));
+function directoryExistsSync(path, required) {
+    if (!path) {
+        throw new Error("Arg 'path' must not be empty");
+    }
+    let stats;
+    try {
+        stats = fs.statSync(path);
+    }
+    catch (error) {
+        if (error.code === 'ENOENT') {
+            if (!required) {
+                return false;
+            }
+            throw new Error(`Directory '${path}' does not exist`);
+        }
+        throw new Error(`Encountered an error when checking whether path '${path}' exists: ${error.message}`);
+    }
+    if (stats.isDirectory()) {
+        return true;
+    }
+    else if (!required) {
+        return false;
+    }
+    throw new Error(`Directory '${path}' does not exist`);
+}
+exports.directoryExistsSync = directoryExistsSync;
+function existsSync(path) {
+    if (!path) {
+        throw new Error("Arg 'path' must not be empty");
+    }
+    try {
+        fs.statSync(path);
+    }
+    catch (error) {
+        if (error.code === 'ENOENT') {
+            return false;
+        }
+        throw new Error(`Encountered an error when checking whether path '${path}' exists: ${error.message}`);
+    }
+    return true;
+}
+exports.existsSync = existsSync;
+function fileExistsSync(path) {
+    if (!path) {
+        throw new Error("Arg 'path' must not be empty");
+    }
+    let stats;
+    try {
+        stats = fs.statSync(path);
+    }
+    catch (error) {
+        if (error.code === 'ENOENT') {
+            return false;
+        }
+        throw new Error(`Encountered an error when checking whether path '${path}' exists: ${error.message}`);
+    }
+    if (!stats.isDirectory()) {
+        return true;
+    }
+    return false;
+}
+exports.fileExistsSync = fileExistsSync;
+
+
+/***/ }),
+/* 413 */
 /***/ (function(module) {
 
 module.exports = require("stream");
 
 /***/ }),
-
-/***/ 417:
+/* 414 */,
+/* 415 */,
+/* 416 */,
+/* 417 */
 /***/ (function(module) {
 
 module.exports = require("crypto");
 
 /***/ }),
-
-/***/ 427:
+/* 418 */,
+/* 419 */,
+/* 420 */,
+/* 421 */,
+/* 422 */,
+/* 423 */,
+/* 424 */,
+/* 425 */,
+/* 426 */,
+/* 427 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -26595,8 +28129,9 @@ function errname(uv, code) {
 
 
 /***/ }),
-
-/***/ 430:
+/* 428 */,
+/* 429 */,
+/* 430 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -26649,8 +28184,7 @@ module.exports = osName;
 
 
 /***/ }),
-
-/***/ 431:
+/* 431 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -26748,8 +28282,8 @@ function escapeProperty(s) {
 //# sourceMappingURL=command.js.map
 
 /***/ }),
-
-/***/ 433:
+/* 432 */,
+/* 433 */
 /***/ (function(module) {
 
 module.exports = deprecate
@@ -26767,8 +28301,8 @@ function deprecate (message) {
 
 
 /***/ }),
-
-/***/ 435:
+/* 434 */,
+/* 435 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = getLastPage
@@ -26781,8 +28315,13 @@ function getLastPage (octokit, link, headers) {
 
 
 /***/ }),
-
-/***/ 442:
+/* 436 */,
+/* 437 */,
+/* 438 */,
+/* 439 */,
+/* 440 */,
+/* 441 */,
+/* 442 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = getPreviousPage
@@ -26795,8 +28334,8 @@ function getPreviousPage (octokit, link, headers) {
 
 
 /***/ }),
-
-/***/ 444:
+/* 443 */,
+/* 444 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -26816,7 +28355,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -26886,8 +28425,11 @@ exports.execute = execute;
 
 
 /***/ }),
-
-/***/ 449:
+/* 445 */,
+/* 446 */,
+/* 447 */,
+/* 448 */,
+/* 449 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -26941,8 +28483,8 @@ module.exports = resolveCommand;
 
 
 /***/ }),
-
-/***/ 451:
+/* 450 */,
+/* 451 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -26958,7 +28500,7 @@ var isPlainObject = _interopDefault(__webpack_require__(329));
 var nodeFetch = _interopDefault(__webpack_require__(276));
 var requestError = __webpack_require__(332);
 
-const VERSION = "5.4.4";
+const VERSION = "5.4.5";
 
 function getBufferResponse(response) {
   return response.arrayBuffer();
@@ -27097,12 +28639,12 @@ exports.request = request;
 
 
 /***/ }),
-
-/***/ 453:
+/* 452 */,
+/* 453 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 var once = __webpack_require__(969)
-var eos = __webpack_require__(9)
+var eos = __webpack_require__(562)
 var fs = __webpack_require__(747) // we only need fs to get the ReadStream and WriteStream prototypes
 
 var noop = function () {}
@@ -27186,8 +28728,7 @@ module.exports = pump
 
 
 /***/ }),
-
-/***/ 454:
+/* 454 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -28836,8 +30377,8 @@ exports.FetchError = FetchError;
 
 
 /***/ }),
-
-/***/ 456:
+/* 455 */,
+/* 456 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -29375,8 +30916,8 @@ exports.HttpClient = HttpClient;
 
 
 /***/ }),
-
-/***/ 458:
+/* 457 */,
+/* 458 */
 /***/ (function(module) {
 
 "use strict";
@@ -29398,8 +30939,10 @@ module.exports = (promise, onFinally) => {
 
 
 /***/ }),
-
-/***/ 462:
+/* 459 */,
+/* 460 */,
+/* 461 */,
+/* 462 */
 /***/ (function(module) {
 
 "use strict";
@@ -29451,8 +30994,7 @@ module.exports.argument = escapeArgument;
 
 
 /***/ }),
-
-/***/ 463:
+/* 463 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -29514,8 +31056,7 @@ exports.RequestError = RequestError;
 
 
 /***/ }),
-
-/***/ 464:
+/* 464 */
 /***/ (function(module) {
 
 "use strict";
@@ -29567,8 +31108,10 @@ module.exports.argument = escapeArgument;
 
 
 /***/ }),
-
-/***/ 468:
+/* 465 */,
+/* 466 */,
+/* 467 */,
+/* 468 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 var fs = __webpack_require__(747)
@@ -29631,8 +31174,8 @@ function sync (path, options) {
 
 
 /***/ }),
-
-/***/ 470:
+/* 469 */,
+/* 470 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -29860,15 +31403,14 @@ exports.getState = getState;
 //# sourceMappingURL=core.js.map
 
 /***/ }),
-
-/***/ 471:
+/* 471 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = getPage
 
 const deprecate = __webpack_require__(433)
 const getPageLinks = __webpack_require__(366)
-const HttpError = __webpack_require__(943)
+const HttpError = __webpack_require__(82)
 
 function getPage (octokit, link, which, headers) {
   deprecate(`octokit.get${which.charAt(0).toUpperCase() + which.slice(1)}Page() – You can use octokit.paginate or async iterators instead: https://github.com/octokit/rest.js#pagination.`)
@@ -29905,8 +31447,8 @@ function applyAcceptHeader (res, headers) {
 
 
 /***/ }),
-
-/***/ 473:
+/* 472 */,
+/* 473 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -29945,8 +31487,12 @@ module.exports.default = macosRelease;
 
 
 /***/ }),
-
-/***/ 479:
+/* 474 */,
+/* 475 */,
+/* 476 */,
+/* 477 */,
+/* 478 */,
+/* 479 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = octokitValidate;
@@ -29959,24 +31505,31 @@ function octokitValidate(octokit) {
 
 
 /***/ }),
+/* 480 */,
+/* 481 */,
+/* 482 */
+/***/ (function(__unusedmodule, exports) {
 
-/***/ 482:
-/***/ (function(module, __unusedexports, __webpack_require__) {
+"use strict";
 
-module.exports = hasFirstPage
-
-const deprecate = __webpack_require__(433)
-const getPageLinks = __webpack_require__(366)
-
-function hasFirstPage (link) {
-  deprecate(`octokit.hasFirstPage() – You can use octokit.paginate or async iterators instead: https://github.com/octokit/rest.js#pagination.`)
-  return getPageLinks(link).first
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.escape = void 0;
+function escape(value) {
+    return value.replace(/[^a-zA-Z0-9_]/g, x => {
+        return `\\${x}`;
+    });
 }
+exports.escape = escape;
 
 
 /***/ }),
-
-/***/ 489:
+/* 483 */,
+/* 484 */,
+/* 485 */,
+/* 486 */,
+/* 487 */,
+/* 488 */,
+/* 489 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -30030,8 +31583,9 @@ module.exports = resolveCommand;
 
 
 /***/ }),
-
-/***/ 492:
+/* 490 */,
+/* 491 */,
+/* 492 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 var once = __webpack_require__(877);
@@ -30131,8 +31685,12 @@ module.exports = eos;
 
 
 /***/ }),
-
-/***/ 498:
+/* 493 */,
+/* 494 */,
+/* 495 */,
+/* 496 */,
+/* 497 */,
+/* 498 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -30161,8 +31719,17 @@ var _default = sha1;
 exports.default = _default;
 
 /***/ }),
-
-/***/ 509:
+/* 499 */,
+/* 500 */,
+/* 501 */,
+/* 502 */,
+/* 503 */,
+/* 504 */,
+/* 505 */,
+/* 506 */,
+/* 507 */,
+/* 508 */,
+/* 509 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = getFirstPage
@@ -30175,8 +31742,7 @@ function getFirstPage (octokit, link, headers) {
 
 
 /***/ }),
-
-/***/ 510:
+/* 510 */
 /***/ (function(__unusedmodule, exports) {
 
 "use strict";
@@ -30213,8 +31779,10 @@ exports.requestLog = requestLog;
 
 
 /***/ }),
-
-/***/ 514:
+/* 511 */,
+/* 512 */,
+/* 513 */,
+/* 514 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -30328,8 +31896,15 @@ exports.GitHub = GitHub;
 //# sourceMappingURL=github.js.map
 
 /***/ }),
-
-/***/ 523:
+/* 515 */,
+/* 516 */,
+/* 517 */,
+/* 518 */,
+/* 519 */,
+/* 520 */,
+/* 521 */,
+/* 522 */,
+/* 523 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 var register = __webpack_require__(843)
@@ -30392,8 +31967,7 @@ module.exports.Collection = Hook.Collection
 
 
 /***/ }),
-
-/***/ 524:
+/* 524 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -30413,7 +31987,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -30549,7 +32123,7 @@ class GitCommandManager {
             return output.exitCode === 0;
         });
     }
-    fetch(refSpec, fetchDepth, remoteName) {
+    fetch(refSpec, fetchDepth) {
         return __awaiter(this, void 0, void 0, function* () {
             const args = ['-c', 'protocol.version=2', 'fetch'];
             if (!refSpec.some(x => x === refHelper.tagsRefSpec)) {
@@ -30562,12 +32136,7 @@ class GitCommandManager {
             else if (fshelper.fileExistsSync(path.join(this.workingDirectory, '.git', 'shallow'))) {
                 args.push('--unshallow');
             }
-            if (remoteName) {
-                args.push(remoteName);
-            }
-            else {
-                args.push('origin');
-            }
+            args.push('origin');
             for (const arg of refSpec) {
                 args.push(arg);
             }
@@ -30606,35 +32175,10 @@ class GitCommandManager {
             yield this.execGit(['lfs', 'install', '--local']);
         });
     }
-    log1(options) {
+    log1() {
         return __awaiter(this, void 0, void 0, function* () {
-            const args = ['log', '-1'];
-            if (options) {
-                args.push.apply(args, options);
-            }
-            const output = yield this.execGit(args);
+            const output = yield this.execGit(['log', '-1']);
             return output.stdout;
-        });
-    }
-    push(remoteName, ref, options) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const args = ['push'];
-            if (options) {
-                args.push.apply(args, options);
-            }
-            if (remoteName) {
-                args.push(remoteName);
-            }
-            if (ref) {
-                args.push(ref);
-            }
-            yield this.execGit(args);
-        });
-    }
-    rebase(remoteName, ref) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const output = yield this.execGit(['rebase', `${remoteName}/${ref}`]);
-            return !output.stdout.trim().endsWith('is up to date.');
         });
     }
     remoteAdd(remoteName, remoteUrl) {
@@ -30850,8 +32394,29 @@ class GitOutput {
 
 
 /***/ }),
-
-/***/ 547:
+/* 525 */,
+/* 526 */,
+/* 527 */,
+/* 528 */,
+/* 529 */,
+/* 530 */,
+/* 531 */,
+/* 532 */,
+/* 533 */,
+/* 534 */,
+/* 535 */,
+/* 536 */,
+/* 537 */,
+/* 538 */,
+/* 539 */,
+/* 540 */,
+/* 541 */,
+/* 542 */,
+/* 543 */,
+/* 544 */,
+/* 545 */,
+/* 546 */,
+/* 547 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -30871,7 +32436,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -31072,8 +32637,123 @@ function getGitCommandManager(settings) {
 
 
 /***/ }),
+/* 548 */,
+/* 549 */,
+/* 550 */,
+/* 551 */,
+/* 552 */,
+/* 553 */,
+/* 554 */,
+/* 555 */,
+/* 556 */,
+/* 557 */,
+/* 558 */,
+/* 559 */,
+/* 560 */,
+/* 561 */,
+/* 562 */
+/***/ (function(module, __unusedexports, __webpack_require__) {
 
-/***/ 565:
+var once = __webpack_require__(969);
+
+var noop = function() {};
+
+var isRequest = function(stream) {
+	return stream.setHeader && typeof stream.abort === 'function';
+};
+
+var isChildProcess = function(stream) {
+	return stream.stdio && Array.isArray(stream.stdio) && stream.stdio.length === 3
+};
+
+var eos = function(stream, opts, callback) {
+	if (typeof opts === 'function') return eos(stream, null, opts);
+	if (!opts) opts = {};
+
+	callback = once(callback || noop);
+
+	var ws = stream._writableState;
+	var rs = stream._readableState;
+	var readable = opts.readable || (opts.readable !== false && stream.readable);
+	var writable = opts.writable || (opts.writable !== false && stream.writable);
+	var cancelled = false;
+
+	var onlegacyfinish = function() {
+		if (!stream.writable) onfinish();
+	};
+
+	var onfinish = function() {
+		writable = false;
+		if (!readable) callback.call(stream);
+	};
+
+	var onend = function() {
+		readable = false;
+		if (!writable) callback.call(stream);
+	};
+
+	var onexit = function(exitCode) {
+		callback.call(stream, exitCode ? new Error('exited with error code: ' + exitCode) : null);
+	};
+
+	var onerror = function(err) {
+		callback.call(stream, err);
+	};
+
+	var onclose = function() {
+		process.nextTick(onclosenexttick);
+	};
+
+	var onclosenexttick = function() {
+		if (cancelled) return;
+		if (readable && !(rs && (rs.ended && !rs.destroyed))) return callback.call(stream, new Error('premature close'));
+		if (writable && !(ws && (ws.ended && !ws.destroyed))) return callback.call(stream, new Error('premature close'));
+	};
+
+	var onrequest = function() {
+		stream.req.on('finish', onfinish);
+	};
+
+	if (isRequest(stream)) {
+		stream.on('complete', onfinish);
+		stream.on('abort', onclose);
+		if (stream.req) onrequest();
+		else stream.on('request', onrequest);
+	} else if (writable && !ws) { // legacy streams
+		stream.on('end', onlegacyfinish);
+		stream.on('close', onlegacyfinish);
+	}
+
+	if (isChildProcess(stream)) stream.on('exit', onexit);
+
+	stream.on('end', onend);
+	stream.on('finish', onfinish);
+	if (opts.error !== false) stream.on('error', onerror);
+	stream.on('close', onclose);
+
+	return function() {
+		cancelled = true;
+		stream.removeListener('complete', onfinish);
+		stream.removeListener('abort', onclose);
+		stream.removeListener('request', onrequest);
+		if (stream.req) stream.req.removeListener('finish', onfinish);
+		stream.removeListener('end', onlegacyfinish);
+		stream.removeListener('close', onlegacyfinish);
+		stream.removeListener('finish', onfinish);
+		stream.removeListener('exit', onexit);
+		stream.removeListener('end', onend);
+		stream.removeListener('error', onerror);
+		stream.removeListener('close', onclose);
+	};
+};
+
+module.exports = eos;
+
+
+/***/ }),
+/* 563 */,
+/* 564 */,
+/* 565 */
 /***/ (function(module) {
 
 "use strict";
@@ -31082,8 +32762,9 @@ module.exports = /^#!.*/;
 
 
 /***/ }),
-
-/***/ 568:
+/* 566 */,
+/* 567 */,
+/* 568 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -31215,8 +32896,12 @@ module.exports = parse;
 
 
 /***/ }),
-
-/***/ 574:
+/* 569 */,
+/* 570 */,
+/* 571 */,
+/* 572 */,
+/* 573 */,
+/* 574 */
 /***/ (function(__unusedmodule, exports) {
 
 "use strict";
@@ -31232,8 +32917,14 @@ exports.escape = escape;
 
 
 /***/ }),
-
-/***/ 582:
+/* 575 */,
+/* 576 */,
+/* 577 */,
+/* 578 */,
+/* 579 */,
+/* 580 */,
+/* 581 */,
+/* 582 */
 /***/ (function(module) {
 
 // This is not the set of all possible signals.
@@ -31292,8 +32983,9 @@ if (process.platform === 'linux') {
 
 
 /***/ }),
-
-/***/ 585:
+/* 583 */,
+/* 584 */,
+/* 585 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = paginationMethodsPlugin
@@ -31303,7 +32995,7 @@ function paginationMethodsPlugin (octokit) {
   octokit.getLastPage = __webpack_require__(435).bind(null, octokit)
   octokit.getNextPage = __webpack_require__(367).bind(null, octokit)
   octokit.getPreviousPage = __webpack_require__(442).bind(null, octokit)
-  octokit.hasFirstPage = __webpack_require__(482)
+  octokit.hasFirstPage = __webpack_require__(104)
   octokit.hasLastPage = __webpack_require__(814)
   octokit.hasNextPage = __webpack_require__(939)
   octokit.hasPreviousPage = __webpack_require__(257)
@@ -31311,8 +33003,17 @@ function paginationMethodsPlugin (octokit) {
 
 
 /***/ }),
-
-/***/ 596:
+/* 586 */,
+/* 587 */,
+/* 588 */,
+/* 589 */,
+/* 590 */,
+/* 591 */,
+/* 592 */,
+/* 593 */,
+/* 594 */,
+/* 595 */,
+/* 596 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -31358,8 +33059,13 @@ function errname(uv, code) {
 
 
 /***/ }),
-
-/***/ 603:
+/* 597 */,
+/* 598 */,
+/* 599 */,
+/* 600 */,
+/* 601 */,
+/* 602 */,
+/* 603 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -31491,15 +33197,20 @@ module.exports = parse;
 
 
 /***/ }),
-
-/***/ 605:
+/* 604 */,
+/* 605 */
 /***/ (function(module) {
 
 module.exports = require("http");
 
 /***/ }),
-
-/***/ 612:
+/* 606 */,
+/* 607 */,
+/* 608 */,
+/* 609 */,
+/* 610 */,
+/* 611 */,
+/* 612 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = which
@@ -31640,15 +33351,15 @@ function whichSync (cmd, opt) {
 
 
 /***/ }),
-
-/***/ 614:
+/* 613 */,
+/* 614 */
 /***/ (function(module) {
 
 module.exports = require("events");
 
 /***/ }),
-
-/***/ 616:
+/* 615 */,
+/* 616 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -31746,8 +33457,11 @@ function escapeProperty(s) {
 //# sourceMappingURL=command.js.map
 
 /***/ }),
-
-/***/ 621:
+/* 617 */,
+/* 618 */,
+/* 619 */,
+/* 620 */,
+/* 621 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -31793,22 +33507,32 @@ module.exports.env = opts => {
 
 
 /***/ }),
-
-/***/ 622:
+/* 622 */
 /***/ (function(module) {
 
 module.exports = require("path");
 
 /***/ }),
-
-/***/ 631:
+/* 623 */,
+/* 624 */,
+/* 625 */,
+/* 626 */,
+/* 627 */,
+/* 628 */,
+/* 629 */,
+/* 630 */,
+/* 631 */
 /***/ (function(module) {
 
 module.exports = require("net");
 
 /***/ }),
-
-/***/ 637:
+/* 632 */,
+/* 633 */,
+/* 634 */,
+/* 635 */,
+/* 636 */,
+/* 637 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 // Note: since nyc uses this module to output coverage, any lines
@@ -31977,8 +33701,9 @@ function processEmit (ev, arg) {
 
 
 /***/ }),
-
-/***/ 640:
+/* 638 */,
+/* 639 */,
+/* 640 */
 /***/ (function(module) {
 
 module.exports = removeHook
@@ -32001,8 +33726,11 @@ function removeHook (state, name, method) {
 
 
 /***/ }),
-
-/***/ 645:
+/* 641 */,
+/* 642 */,
+/* 643 */,
+/* 644 */,
+/* 645 */
 /***/ (function(module) {
 
 "use strict";
@@ -32011,8 +33739,8 @@ module.exports = /^#!.*/;
 
 
 /***/ }),
-
-/***/ 647:
+/* 646 */,
+/* 647 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -32064,8 +33792,12 @@ exports.Context = Context;
 //# sourceMappingURL=context.js.map
 
 /***/ }),
-
-/***/ 653:
+/* 648 */,
+/* 649 */,
+/* 650 */,
+/* 651 */,
+/* 652 */,
+/* 653 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = isexe
@@ -32112,8 +33844,7 @@ function checkMode (stat, options) {
 
 
 /***/ }),
-
-/***/ 654:
+/* 654 */
 /***/ (function(module) {
 
 // This is not the set of all possible signals.
@@ -32172,23 +33903,60 @@ if (process.platform === 'linux') {
 
 
 /***/ }),
+/* 655 */,
+/* 656 */,
+/* 657 */,
+/* 658 */
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
 
-/***/ 659:
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createGitCommandManager = void 0;
+const git_command_manager_1 = __webpack_require__(139);
+function createGitCommandManager(workingDirectory, lfs) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield git_command_manager_1.createCommandManager(workingDirectory, lfs);
+    });
+}
+exports.createGitCommandManager = createGitCommandManager;
+
+
+/***/ }),
+/* 659 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = __webpack_require__(202);
 
 
 /***/ }),
-
-/***/ 669:
+/* 660 */,
+/* 661 */,
+/* 662 */,
+/* 663 */,
+/* 664 */,
+/* 665 */,
+/* 666 */,
+/* 667 */,
+/* 668 */,
+/* 669 */
 /***/ (function(module) {
 
 module.exports = require("util");
 
 /***/ }),
-
-/***/ 672:
+/* 670 */,
+/* 671 */,
+/* 672 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -32389,8 +34157,18 @@ function isUnixExecutable(stats) {
 //# sourceMappingURL=io-util.js.map
 
 /***/ }),
-
-/***/ 684:
+/* 673 */,
+/* 674 */,
+/* 675 */,
+/* 676 */,
+/* 677 */,
+/* 678 */,
+/* 679 */,
+/* 680 */,
+/* 681 */,
+/* 682 */,
+/* 683 */,
+/* 684 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -32410,7 +34188,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -32482,8 +34260,7 @@ exports.fileExistsSync = fileExistsSync;
 
 
 /***/ }),
-
-/***/ 685:
+/* 685 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = Octokit;
@@ -32518,8 +34295,13 @@ function Octokit(plugins, options) {
 
 
 /***/ }),
-
-/***/ 692:
+/* 686 */,
+/* 687 */,
+/* 688 */,
+/* 689 */,
+/* 690 */,
+/* 691 */,
+/* 692 */
 /***/ (function(__unusedmodule, exports) {
 
 "use strict";
@@ -32546,8 +34328,10 @@ exports.Deprecation = Deprecation;
 
 
 /***/ }),
-
-/***/ 696:
+/* 693 */,
+/* 694 */,
+/* 695 */,
+/* 696 */
 /***/ (function(module) {
 
 "use strict";
@@ -32602,8 +34386,7 @@ module.exports = isPlainObject;
 
 
 /***/ }),
-
-/***/ 697:
+/* 697 */
 /***/ (function(module) {
 
 "use strict";
@@ -32625,8 +34408,11 @@ module.exports = (promise, onFinally) => {
 
 
 /***/ }),
-
-/***/ 702:
+/* 698 */,
+/* 699 */,
+/* 700 */,
+/* 701 */,
+/* 702 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -32784,8 +34570,90 @@ function validate(octokit, options) {
 
 
 /***/ }),
+/* 703 */,
+/* 704 */,
+/* 705 */,
+/* 706 */,
+/* 707 */,
+/* 708 */,
+/* 709 */,
+/* 710 */,
+/* 711 */,
+/* 712 */,
+/* 713 */,
+/* 714 */,
+/* 715 */,
+/* 716 */,
+/* 717 */,
+/* 718 */,
+/* 719 */,
+/* 720 */,
+/* 721 */,
+/* 722 */,
+/* 723 */,
+/* 724 */
+/***/ (function(module, __unusedexports, __webpack_require__) {
 
-/***/ 729:
+module.exports = authenticate;
+
+const { Deprecation } = __webpack_require__(200);
+const once = __webpack_require__(877);
+
+const deprecateAuthenticate = once((log, deprecation) => log.warn(deprecation));
+
+function authenticate(state, options) {
+  deprecateAuthenticate(
+    state.octokit.log,
+    new Deprecation(
+      '[@octokit/rest] octokit.authenticate() is deprecated. Use "auth" constructor option instead.'
+    )
+  );
+
+  if (!options) {
+    state.auth = false;
+    return;
+  }
+
+  switch (options.type) {
+    case "basic":
+      if (!options.username || !options.password) {
+        throw new Error(
+          "Basic authentication requires both a username and password to be set"
+        );
+      }
+      break;
+
+    case "oauth":
+      if (!options.token && !(options.key && options.secret)) {
+        throw new Error(
+          "OAuth2 authentication requires a token or key & secret to be set"
+        );
+      }
+      break;
+
+    case "token":
+    case "app":
+      if (!options.token) {
+        throw new Error("Token authentication requires a token to be set");
+      }
+      break;
+
+    default:
+      throw new Error(
+        "Invalid authentication type, must be 'basic', 'oauth', 'token' or 'app'"
+      );
+  }
+
+  state.auth = options;
+}
+
+
+/***/ }),
+/* 725 */,
+/* 726 */,
+/* 727 */,
+/* 728 */,
+/* 729 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = authenticationRequestError;
@@ -32846,8 +34714,10 @@ function authenticationRequestError(state, error, options) {
 
 
 /***/ }),
-
-/***/ 733:
+/* 730 */,
+/* 731 */,
+/* 732 */,
+/* 733 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -32895,8 +34765,15 @@ var _default = v4;
 exports.default = _default;
 
 /***/ }),
-
-/***/ 742:
+/* 734 */,
+/* 735 */,
+/* 736 */,
+/* 737 */,
+/* 738 */,
+/* 739 */,
+/* 740 */,
+/* 741 */,
+/* 742 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 var fs = __webpack_require__(747)
@@ -32959,8 +34836,8 @@ function sync (path, options) {
 
 
 /***/ }),
-
-/***/ 744:
+/* 743 */,
+/* 744 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -33188,8 +35065,8 @@ exports.getState = getState;
 //# sourceMappingURL=core.js.map
 
 /***/ }),
-
-/***/ 746:
+/* 745 */,
+/* 746 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = authenticationBeforeRequest;
@@ -33238,15 +35115,18 @@ function authenticationBeforeRequest(state, options) {
 
 
 /***/ }),
-
-/***/ 747:
+/* 747 */
 /***/ (function(module) {
 
 module.exports = require("fs");
 
 /***/ }),
-
-/***/ 753:
+/* 748 */,
+/* 749 */,
+/* 750 */,
+/* 751 */,
+/* 752 */,
+/* 753 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -33262,7 +35142,7 @@ var isPlainObject = _interopDefault(__webpack_require__(696));
 var nodeFetch = _interopDefault(__webpack_require__(454));
 var requestError = __webpack_require__(463);
 
-const VERSION = "5.4.4";
+const VERSION = "5.4.5";
 
 function getBufferResponse(response) {
   return response.arrayBuffer();
@@ -33401,8 +35281,11 @@ exports.request = request;
 
 
 /***/ }),
-
-/***/ 758:
+/* 754 */,
+/* 755 */,
+/* 756 */,
+/* 757 */,
+/* 758 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = registerPlugin;
@@ -33417,8 +35300,8 @@ function registerPlugin(plugins, pluginFunction) {
 
 
 /***/ }),
-
-/***/ 760:
+/* 759 */,
+/* 760 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -33464,15 +35347,16 @@ module.exports.env = opts => {
 
 
 /***/ }),
-
-/***/ 761:
+/* 761 */
 /***/ (function(module) {
 
 module.exports = require("zlib");
 
 /***/ }),
-
-/***/ 765:
+/* 762 */,
+/* 763 */,
+/* 764 */,
+/* 765 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -33492,7 +35376,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -33544,8 +35428,7 @@ if (!exports.IsPost) {
 
 
 /***/ }),
-
-/***/ 766:
+/* 766 */
 /***/ (function(module) {
 
 /**
@@ -34482,8 +36365,8 @@ module.exports = get;
 
 
 /***/ }),
-
-/***/ 768:
+/* 767 */,
+/* 768 */
 /***/ (function(module) {
 
 "use strict";
@@ -34505,8 +36388,11 @@ module.exports = function (x) {
 
 
 /***/ }),
-
-/***/ 773:
+/* 769 */,
+/* 770 */,
+/* 771 */,
+/* 772 */,
+/* 773 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = authenticationPlugin;
@@ -34588,8 +36474,10 @@ function authenticationPlugin(octokit, options) {
 
 
 /***/ }),
-
-/***/ 777:
+/* 774 */,
+/* 775 */,
+/* 776 */,
+/* 777 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -34950,7 +36838,7 @@ function withDefaults(oldDefaults, newDefaults) {
   });
 }
 
-const VERSION = "6.0.2";
+const VERSION = "6.0.3";
 
 const userAgent = `octokit-endpoint.js/${VERSION} ${universalUserAgent.getUserAgent()}`; // DEFAULTS has all properties set that EndpointOptions has, except url.
 // So we use RequestParameters and add method as additional required property.
@@ -34975,8 +36863,15 @@ exports.endpoint = endpoint;
 
 
 /***/ }),
-
-/***/ 786:
+/* 778 */,
+/* 779 */,
+/* 780 */,
+/* 781 */,
+/* 782 */,
+/* 783 */,
+/* 784 */,
+/* 785 */,
+/* 786 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = withAuthorizationPrefix;
@@ -35005,8 +36900,7 @@ function withAuthorizationPrefix(authorization) {
 
 
 /***/ }),
-
-/***/ 787:
+/* 787 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -35032,8 +36926,10 @@ module.exports = function (str) {
 
 
 /***/ }),
-
-/***/ 791:
+/* 788 */,
+/* 789 */,
+/* 790 */,
+/* 791 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 var once = __webpack_require__(877)
@@ -35121,8 +37017,11 @@ module.exports = pump
 
 
 /***/ }),
-
-/***/ 796:
+/* 792 */,
+/* 793 */,
+/* 794 */,
+/* 795 */,
+/* 796 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -35151,8 +37050,13 @@ exports.getUserAgent = getUserAgent;
 
 
 /***/ }),
-
-/***/ 803:
+/* 797 */,
+/* 798 */,
+/* 799 */,
+/* 800 */,
+/* 801 */,
+/* 802 */,
+/* 803 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -35181,8 +37085,17 @@ var _default = md5;
 exports.default = _default;
 
 /***/ }),
-
-/***/ 814:
+/* 804 */,
+/* 805 */,
+/* 806 */,
+/* 807 */,
+/* 808 */,
+/* 809 */,
+/* 810 */,
+/* 811 */,
+/* 812 */,
+/* 813 */,
+/* 814 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = hasLastPage
@@ -35197,8 +37110,8 @@ function hasLastPage (link) {
 
 
 /***/ }),
-
-/***/ 816:
+/* 815 */,
+/* 816 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 // Unique ID creation requires a high quality random # generator.  In node.js
@@ -35212,8 +37125,8 @@ module.exports = function nodeRNG() {
 
 
 /***/ }),
-
-/***/ 818:
+/* 817 */,
+/* 818 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = isexe
@@ -35261,8 +37174,19 @@ function sync (path, options) {
 
 
 /***/ }),
-
-/***/ 831:
+/* 819 */,
+/* 820 */,
+/* 821 */,
+/* 822 */,
+/* 823 */,
+/* 824 */,
+/* 825 */,
+/* 826 */,
+/* 827 */,
+/* 828 */,
+/* 829 */,
+/* 830 */,
+/* 831 */
 /***/ (function(__unusedmodule, exports) {
 
 "use strict";
@@ -35411,15 +37335,20 @@ exports.paginateRest = paginateRest;
 
 
 /***/ }),
-
-/***/ 835:
+/* 832 */,
+/* 833 */,
+/* 834 */,
+/* 835 */
 /***/ (function(module) {
 
 module.exports = require("url");
 
 /***/ }),
-
-/***/ 840:
+/* 836 */,
+/* 837 */,
+/* 838 */,
+/* 839 */,
+/* 840 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -35439,7 +37368,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -35555,8 +37484,9 @@ exports.prepareExistingDirectory = prepareExistingDirectory;
 
 
 /***/ }),
-
-/***/ 843:
+/* 841 */,
+/* 842 */,
+/* 843 */
 /***/ (function(module) {
 
 module.exports = register
@@ -35590,8 +37520,7 @@ function register (state, name, method, options) {
 
 
 /***/ }),
-
-/***/ 844:
+/* 844 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -35613,8 +37542,9 @@ function rng() {
 }
 
 /***/ }),
-
-/***/ 847:
+/* 845 */,
+/* 846 */,
+/* 847 */
 /***/ (function(module) {
 
 "use strict";
@@ -35680,8 +37610,19 @@ module.exports = {
 
 
 /***/ }),
-
-/***/ 860:
+/* 848 */,
+/* 849 */,
+/* 850 */,
+/* 851 */,
+/* 852 */,
+/* 853 */,
+/* 854 */,
+/* 855 */,
+/* 856 */,
+/* 857 */,
+/* 858 */,
+/* 859 */,
+/* 860 */
 /***/ (function(module) {
 
 module.exports = function atob(str) {
@@ -35690,8 +37631,10 @@ module.exports = function atob(str) {
 
 
 /***/ }),
-
-/***/ 864:
+/* 861 */,
+/* 862 */,
+/* 863 */,
+/* 864 */
 /***/ (function(module, exports) {
 
 exports = module.exports = SemVer
@@ -37180,8 +39123,8 @@ function coerce (version) {
 
 
 /***/ }),
-
-/***/ 866:
+/* 865 */,
+/* 866 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -37207,8 +39150,7 @@ module.exports = function (str) {
 
 
 /***/ }),
-
-/***/ 867:
+/* 867 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -37321,8 +39263,16 @@ function notUndefined(x) {
 
 
 /***/ }),
-
-/***/ 877:
+/* 868 */,
+/* 869 */,
+/* 870 */,
+/* 871 */,
+/* 872 */,
+/* 873 */,
+/* 874 */,
+/* 875 */,
+/* 876 */,
+/* 877 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 var wrappy = __webpack_require__(942)
@@ -37370,8 +39320,10 @@ function onceStrict (fn) {
 
 
 /***/ }),
-
-/***/ 881:
+/* 878 */,
+/* 879 */,
+/* 880 */,
+/* 881 */
 /***/ (function(module) {
 
 "use strict";
@@ -37437,8 +39389,18 @@ module.exports = {
 
 
 /***/ }),
-
-/***/ 893:
+/* 882 */,
+/* 883 */,
+/* 884 */,
+/* 885 */,
+/* 886 */,
+/* 887 */,
+/* 888 */,
+/* 889 */,
+/* 890 */,
+/* 891 */,
+/* 892 */,
+/* 893 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -37551,8 +39513,9 @@ var _default = v1;
 exports.default = _default;
 
 /***/ }),
-
-/***/ 896:
+/* 894 */,
+/* 895 */,
+/* 896 */
 /***/ (function(module) {
 
 "use strict";
@@ -37600,8 +39563,8 @@ module.exports = opts => {
 
 
 /***/ }),
-
-/***/ 898:
+/* 897 */,
+/* 898 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -37693,8 +39656,11 @@ exports.withCustomRequest = withCustomRequest;
 
 
 /***/ }),
-
-/***/ 903:
+/* 899 */,
+/* 900 */,
+/* 901 */,
+/* 902 */,
+/* 903 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = parseOptions;
@@ -37789,8 +39755,20 @@ function parseOptions(options, log, hook) {
 
 
 /***/ }),
-
-/***/ 917:
+/* 904 */,
+/* 905 */,
+/* 906 */,
+/* 907 */,
+/* 908 */,
+/* 909 */,
+/* 910 */,
+/* 911 */,
+/* 912 */,
+/* 913 */,
+/* 914 */,
+/* 915 */,
+/* 916 */,
+/* 917 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -37836,8 +39814,21 @@ module.exports._enoent = enoent;
 
 
 /***/ }),
-
-/***/ 932:
+/* 918 */,
+/* 919 */,
+/* 920 */,
+/* 921 */,
+/* 922 */,
+/* 923 */,
+/* 924 */,
+/* 925 */,
+/* 926 */,
+/* 927 */,
+/* 928 */,
+/* 929 */,
+/* 930 */,
+/* 931 */,
+/* 932 */
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
@@ -37857,7 +39848,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -37962,8 +39953,13 @@ exports.getInputs = getInputs;
 
 
 /***/ }),
-
-/***/ 939:
+/* 933 */,
+/* 934 */,
+/* 935 */,
+/* 936 */,
+/* 937 */,
+/* 938 */,
+/* 939 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = hasNextPage
@@ -37978,8 +39974,7 @@ function hasNextPage (link) {
 
 
 /***/ }),
-
-/***/ 940:
+/* 940 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -38037,8 +40032,8 @@ module.exports = options => {
 
 
 /***/ }),
-
-/***/ 942:
+/* 941 */,
+/* 942 */
 /***/ (function(module) {
 
 // Returns a wrapper function that returns a wrapped callback
@@ -38077,30 +40072,90 @@ function wrappy (fn, cb) {
 
 
 /***/ }),
+/* 943 */
+/***/ (function(__unusedmodule, exports) {
 
-/***/ 943:
-/***/ (function(module) {
+"use strict";
 
-module.exports = class HttpError extends Error {
-  constructor (message, code, headers) {
-    super(message)
-
-    // Maintains proper stack trace (only available on V8)
-    /* istanbul ignore next */
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor)
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.GitVersion = void 0;
+class GitVersion {
+    /**
+     * Used for comparing the version of git and git-lfs against the minimum required version
+     * @param version the version string, e.g. 1.2 or 1.2.3
+     */
+    constructor(version) {
+        this.major = NaN;
+        this.minor = NaN;
+        this.patch = NaN;
+        if (version) {
+            const match = version.match(/^(\d+)\.(\d+)(\.(\d+))?$/);
+            if (match) {
+                this.major = Number(match[1]);
+                this.minor = Number(match[2]);
+                if (match[4]) {
+                    this.patch = Number(match[4]);
+                }
+            }
+        }
     }
-
-    this.name = 'HttpError'
-    this.code = code
-    this.headers = headers
-  }
+    /**
+     * Compares the instance against a minimum required version
+     * @param minimum Minimum version
+     */
+    checkMinimum(minimum) {
+        if (!minimum.isValid()) {
+            throw new Error('Arg minimum is not a valid version');
+        }
+        // Major is insufficient
+        if (this.major < minimum.major) {
+            return false;
+        }
+        // Major is equal
+        if (this.major === minimum.major) {
+            // Minor is insufficient
+            if (this.minor < minimum.minor) {
+                return false;
+            }
+            // Minor is equal
+            if (this.minor === minimum.minor) {
+                // Patch is insufficient
+                if (this.patch && this.patch < (minimum.patch || 0)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    /**
+     * Indicates whether the instance was constructed from a valid version string
+     */
+    isValid() {
+        return !isNaN(this.major);
+    }
+    /**
+     * Returns the version as a string, e.g. 1.2 or 1.2.3
+     */
+    toString() {
+        let result = '';
+        if (this.isValid()) {
+            result = `${this.major}.${this.minor}`;
+            if (!isNaN(this.patch)) {
+                result += `.${this.patch}`;
+            }
+        }
+        return result;
+    }
 }
+exports.GitVersion = GitVersion;
 
 
 /***/ }),
-
-/***/ 948:
+/* 944 */,
+/* 945 */,
+/* 946 */,
+/* 947 */,
+/* 948 */
 /***/ (function(module) {
 
 "use strict";
@@ -38118,8 +40173,13 @@ module.exports = function(fn) {
 }
 
 /***/ }),
-
-/***/ 955:
+/* 949 */,
+/* 950 */,
+/* 951 */,
+/* 952 */,
+/* 953 */,
+/* 954 */,
+/* 955 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -38487,8 +40547,17 @@ module.exports.shellSync = (cmd, opts) => handleShell(module.exports.sync, cmd, 
 
 
 /***/ }),
-
-/***/ 966:
+/* 956 */,
+/* 957 */,
+/* 958 */,
+/* 959 */,
+/* 960 */,
+/* 961 */,
+/* 962 */,
+/* 963 */,
+/* 964 */,
+/* 965 */,
+/* 966 */
 /***/ (function(module) {
 
 /**
@@ -38520,8 +40589,9 @@ module.exports = bytesToUuid;
 
 
 /***/ }),
-
-/***/ 969:
+/* 967 */,
+/* 968 */,
+/* 969 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 var wrappy = __webpack_require__(11)
@@ -38569,8 +40639,12 @@ function onceStrict (fn) {
 
 
 /***/ }),
-
-/***/ 975:
+/* 970 */,
+/* 971 */,
+/* 972 */,
+/* 973 */,
+/* 974 */,
+/* 975 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 module.exports = authenticationPlugin;
@@ -38580,7 +40654,7 @@ const once = __webpack_require__(877);
 
 const deprecateAuthenticate = once((log, deprecation) => log.warn(deprecation));
 
-const authenticate = __webpack_require__(979);
+const authenticate = __webpack_require__(724);
 const beforeRequest = __webpack_require__(746);
 const requestError = __webpack_require__(729);
 
@@ -38607,67 +40681,102 @@ function authenticationPlugin(octokit, options) {
 
 
 /***/ }),
+/* 976 */,
+/* 977 */,
+/* 978 */,
+/* 979 */
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
 
-/***/ 979:
-/***/ (function(module, __unusedexports, __webpack_require__) {
+"use strict";
 
-module.exports = authenticate;
-
-const { Deprecation } = __webpack_require__(200);
-const once = __webpack_require__(877);
-
-const deprecateAuthenticate = once((log, deprecation) => log.warn(deprecation));
-
-function authenticate(state, options) {
-  deprecateAuthenticate(
-    state.octokit.log,
-    new Deprecation(
-      '[@octokit/rest] octokit.authenticate() is deprecated. Use "auth" constructor option instead.'
-    )
-  );
-
-  if (!options) {
-    state.auth = false;
-    return;
-  }
-
-  switch (options.type) {
-    case "basic":
-      if (!options.username || !options.password) {
-        throw new Error(
-          "Basic authentication requires both a username and password to be set"
-        );
-      }
-      break;
-
-    case "oauth":
-      if (!options.token && !(options.key && options.secret)) {
-        throw new Error(
-          "OAuth2 authentication requires a token or key & secret to be set"
-        );
-      }
-      break;
-
-    case "token":
-    case "app":
-      if (!options.token) {
-        throw new Error("Token authentication requires a token to be set");
-      }
-      break;
-
-    default:
-      throw new Error(
-        "Invalid authentication type, must be 'basic', 'oauth', 'token' or 'app'"
-      );
-  }
-
-  state.auth = options;
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.execute = exports.RetryHelper = void 0;
+const core = __importStar(__webpack_require__(470));
+const defaultMaxAttempts = 3;
+const defaultMinSeconds = 10;
+const defaultMaxSeconds = 20;
+class RetryHelper {
+    constructor(maxAttempts = defaultMaxAttempts, minSeconds = defaultMinSeconds, maxSeconds = defaultMaxSeconds) {
+        this.maxAttempts = maxAttempts;
+        this.minSeconds = Math.floor(minSeconds);
+        this.maxSeconds = Math.floor(maxSeconds);
+        if (this.minSeconds > this.maxSeconds) {
+            throw new Error('min seconds should be less than or equal to max seconds');
+        }
+    }
+    execute(action) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let attempt = 1;
+            while (attempt < this.maxAttempts) {
+                // Try
+                try {
+                    return yield action();
+                }
+                catch (err) {
+                    core.info(err.message);
+                }
+                // Sleep
+                const seconds = this.getSleepAmount();
+                core.info(`Waiting ${seconds} seconds before trying again`);
+                yield this.sleep(seconds);
+                attempt++;
+            }
+            // Last attempt
+            return yield action();
+        });
+    }
+    getSleepAmount() {
+        return (Math.floor(Math.random() * (this.maxSeconds - this.minSeconds + 1)) +
+            this.minSeconds);
+    }
+    sleep(seconds) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise(resolve => setTimeout(resolve, seconds * 1000));
+        });
+    }
 }
+exports.RetryHelper = RetryHelper;
+function execute(action) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const retryHelper = new RetryHelper();
+        return yield retryHelper.execute(action);
+    });
+}
+exports.execute = execute;
 
 
 /***/ }),
-
-/***/ 982:
+/* 980 */,
+/* 981 */,
+/* 982 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 "use strict";
@@ -38707,9 +40816,9 @@ const windowsRelease = release => {
 	if ((!release || release === os.release()) && ['6.1', '6.2', '6.3', '10.0'].includes(ver)) {
 		let stdout;
 		try {
-			stdout = execa.sync('powershell', ['(Get-CimInstance -ClassName Win32_OperatingSystem).caption']).stdout || '';
-		} catch (_) {
 			stdout = execa.sync('wmic', ['os', 'get', 'Caption']).stdout || '';
+		} catch (_) {
+			stdout = execa.sync('powershell', ['(Get-CimInstance -ClassName Win32_OperatingSystem).caption']).stdout || '';
 		}
 
 		const year = (stdout.match(/2008|2012|2016|2019/) || [])[0];
@@ -38725,6 +40834,58 @@ const windowsRelease = release => {
 module.exports = windowsRelease;
 
 
-/***/ })
+/***/ }),
+/* 983 */,
+/* 984 */,
+/* 985 */,
+/* 986 */
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
 
-/******/ });
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const tr = __importStar(__webpack_require__(9));
+/**
+ * Exec a command.
+ * Output will be streamed to the live console.
+ * Returns promise with return code
+ *
+ * @param     commandLine        command to execute (can include additional args). Must be correctly escaped.
+ * @param     args               optional arguments for tool. Escaping is handled by the lib.
+ * @param     options            optional exec options.  See ExecOptions
+ * @returns   Promise<number>    exit code
+ */
+function exec(commandLine, args, options) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const commandArgs = tr.argStringToArray(commandLine);
+        if (commandArgs.length === 0) {
+            throw new Error(`Parameter 'commandLine' cannot be null or empty.`);
+        }
+        // Path to tool to execute should be first arg
+        const toolPath = commandArgs[0];
+        args = commandArgs.slice(1).concat(args || []);
+        const runner = new tr.ToolRunner(toolPath, args, options);
+        return runner.exec();
+    });
+}
+exports.exec = exec;
+//# sourceMappingURL=exec.js.map
+
+/***/ })
+/******/ ]);

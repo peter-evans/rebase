@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import {IGitCommandManager} from 'checkout/lib/git-command-manager'
+import {IGitCommandManager} from '@peter-evans/actions-git'
 import {Pull} from './pulls-helper'
 import {v4 as uuidv4} from 'uuid'
 

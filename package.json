@@ -32,7 +32,8 @@
     "@actions/core": "1.2.4",
     "@actions/io": "1.0.2",
     "@octokit/graphql": "4.5.0",
-    "checkout": "github:peter-evans/checkout#master-ext",
+    "@peter-evans/actions-git": "1.0.0",
+    "checkout": "github:actions/checkout#v2.2.0",
     "uuid": "8.1.0"
   },
   "devDependencies": {
