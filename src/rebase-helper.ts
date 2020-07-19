@@ -1,12 +1,12 @@
 import * as core from '@actions/core'
-import {IGitCommandManager} from '@peter-evans/actions-git'
+import {GitCommandManager} from './git-command-manager'
 import {Pull} from './pulls-helper'
 import {v4 as uuidv4} from 'uuid'
 
 export class RebaseHelper {
-  private git: IGitCommandManager
+  private git: GitCommandManager
 
-  constructor(git: IGitCommandManager) {
+  constructor(git: GitCommandManager) {
     this.git = git
   }
 
@@ -17,11 +17,11 @@ export class RebaseHelper {
 
     // Add head remote
     const remoteName = uuidv4()
-    await this.git.remoteAdd(remoteName, pull.headRepoUrl)
+    await this.git.exec(['remote', 'add', remoteName, pull.headRepoUrl])
 
     // Fetch
     core.startGroup(`Fetching head ref '${pull.headRef}'.`)
-    await this.git.fetch([pull.headRef], 0, remoteName)
+    await this.git.fetch([pull.headRef], remoteName)
     core.endGroup()
 
     // Checkout
@@ -38,8 +38,8 @@ export class RebaseHelper {
       `Setting committer to match the last commit on the head ref.`
     )
     const sha = await this.git.revParse('HEAD')
-    const committerName = await this.git.log1([`--format='%cn'`, sha])
-    const committerEmail = await this.git.log1([`--format='%ce'`, sha])
+    const committerName = await this.log1([`--format='%cn'`, sha])
+    const committerEmail = await this.log1([`--format='%ce'`, sha])
     await this.git.config('user.name', committerName)
     await this.git.config('user.email', committerEmail)
     core.endGroup()
@@ -51,8 +51,11 @@ export class RebaseHelper {
 
     if (result == RebaseResult.Rebased) {
       core.startGroup(`Pushing changes to head ref '${pull.headRef}'`)
-      const options = ['--force-with-lease']
-      await this.git.push(remoteName, `HEAD:${pull.headRef}`, options)
+      await this.git.push([
+        '--force-with-lease',
+        remoteName,
+        `HEAD:${pull.headRef}`
+      ])
       core.endGroup()
       core.info(`Head ref '${pull.headRef}' successfully rebased.`)
       return true
@@ -69,12 +72,19 @@ export class RebaseHelper {
     return false
   }
 
+  private async log1(options: string[]): Promise<string> {
+    const params = ['log', '-1']
+    params.push(...options)
+    const output = await this.git.exec(params)
+    return output.stdout.trim()
+  }
+
   private async tryRebase(
     remoteName: string,
     ref: string
   ): Promise<RebaseResult> {
     try {
-      const result = await this.git.rebase(remoteName, ref)
+      const result = await this.git.exec(['rebase', `${remoteName}/${ref}`])
       return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate
     } catch {
       return RebaseResult.Failed
