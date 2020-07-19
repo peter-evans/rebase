@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import * as io from '@actions/io'
-import * as actionsGit from '@peter-evans/actions-git'
 import * as inputHelper from 'checkout/lib/input-helper'
+import {GitCommandManager} from './git-command-manager'
 import * as gitSourceProvider from 'checkout/lib/git-source-provider'
 import * as inputValidator from './input-validator'
 import {PullsHelper} from './pulls-helper'
@@ -43,10 +43,8 @@ async function run(): Promise<void> {
       await gitSourceProvider.getSource(sourceSettings)
 
       // Rebase
-      const git = await actionsGit.createGitCommandManager(
-        sourceSettings.repositoryPath,
-        sourceSettings.lfs
-      )
+      // Create a git command manager
+      const git = await GitCommandManager.create(sourceSettings.repositoryPath)
       const rebaseHelper = new RebaseHelper(git)
       let rebasedCount = 0
       for (const pull of pulls) {
