@@ -7,7 +7,7 @@ A GitHub action to rebase pull requests in a repository.
 ## Usage
 
 The default behaviour of the action with no configured inputs is to check the current repository for rebaseable pull requests and rebase them.
-Pull requests from forks are rebaseable only if they [allow edits from maintainers](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/allowing-changes-to-a-pull-request-branch-created-from-a-fork).
+Pull requests from forks are rebaseable only if they [allow edits from maintainers](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/allowing-changes-to-a-pull-request-branch-created-from-a-fork).
 
 ```yml
       - uses: peter-evans/rebase@v1
@@ -47,7 +47,7 @@ jobs:
 
 ### Rebase slash command
 
-Use the following two workflows and a `repo` scoped [PAT](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line) to add a `/rebase` slash command to pull request comments.
+Use the following two workflows and a `repo` scoped [PAT](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) to add a `/rebase` slash command to pull request comments.
 The [slash-command-dispatch](https://github.com/peter-evans/slash-command-dispatch) action makes sure that the command is only executable by users with `write` access to the repository.
 
 ```yml
@@ -95,14 +95,14 @@ jobs:
 
 | Name | Description | Default |
 | --- | --- | --- |
-| `token` | `GITHUB_TOKEN` or a `repo` scoped [PAT](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line). | `GITHUB_TOKEN` |
+| `token` | `GITHUB_TOKEN` or a `repo` scoped [PAT](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token). | `GITHUB_TOKEN` |
 | `repository` | The target GitHub repository containing the pull request. | `github.repository` (Current repository) |
 | `head` | Filter pull requests by head user or head organization and branch name in the format `user:ref-name` or `organization:ref-name`. For example: `github:new-script-format` or `octocat:test-branch`. | |
 | `base` | Filter pull requests by base branch name. Example: `gh-pages`. | |
 
 ### Target other repositories
 
-You can rebase requests in another repository by using a `repo` scoped [PAT](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line) instead of `GITHUB_TOKEN`.
+You can rebase requests in another repository by using a `repo` scoped [PAT](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) instead of `GITHUB_TOKEN`.
 The user associated with the PAT must have write access to the repository.
 
 This example targets multiple repositories.
