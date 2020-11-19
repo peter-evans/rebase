@@ -2654,7 +2654,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 var request = __webpack_require__(6234);
 var universalUserAgent = __webpack_require__(8908);
 
-const VERSION = "4.5.6";
+const VERSION = "4.5.7";
 
 class GraphqlError extends Error {
   constructor(request, response) {
@@ -6239,7 +6239,6 @@ exports.GitHub = GitHub;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const url = __webpack_require__(8835);
 const http = __webpack_require__(8605);
 const https = __webpack_require__(7211);
 const pm = __webpack_require__(6293);
@@ -6288,7 +6287,7 @@ var MediaTypes;
  * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
  */
 function getProxyUrl(serverUrl) {
-    let proxyUrl = pm.getProxyUrl(url.parse(serverUrl));
+    let proxyUrl = pm.getProxyUrl(new URL(serverUrl));
     return proxyUrl ? proxyUrl.href : '';
 }
 exports.getProxyUrl = getProxyUrl;
@@ -6307,6 +6306,15 @@ const HttpResponseRetryCodes = [
 const RetryableHttpVerbs = ['OPTIONS', 'GET', 'DELETE', 'HEAD'];
 const ExponentialBackoffCeiling = 10;
 const ExponentialBackoffTimeSlice = 5;
+class HttpClientError extends Error {
+    constructor(message, statusCode) {
+        super(message);
+        this.name = 'HttpClientError';
+        this.statusCode = statusCode;
+        Object.setPrototypeOf(this, HttpClientError.prototype);
+    }
+}
+exports.HttpClientError = HttpClientError;
 class HttpClientResponse {
     constructor(message) {
         this.message = message;
@@ -6325,7 +6333,7 @@ class HttpClientResponse {
 }
 exports.HttpClientResponse = HttpClientResponse;
 function isHttps(requestUrl) {
-    let parsedUrl = url.parse(requestUrl);
+    let parsedUrl = new URL(requestUrl);
     return parsedUrl.protocol === 'https:';
 }
 exports.isHttps = isHttps;
@@ -6430,7 +6438,7 @@ class HttpClient {
         if (this._disposed) {
             throw new Error('Client has already been disposed.');
         }
-        let parsedUrl = url.parse(requestUrl);
+        let parsedUrl = new URL(requestUrl);
         let info = this._prepareRequest(verb, parsedUrl, headers);
         // Only perform retries on reads since writes may not be idempotent.
         let maxTries = this._allowRetries && RetryableHttpVerbs.indexOf(verb) != -1
@@ -6469,7 +6477,7 @@ class HttpClient {
                     // if there's no location to redirect to, we won't
                     break;
                 }
-                let parsedRedirectUrl = url.parse(redirectUrl);
+                let parsedRedirectUrl = new URL(redirectUrl);
                 if (parsedUrl.protocol == 'https:' &&
                     parsedUrl.protocol != parsedRedirectUrl.protocol &&
                     !this._allowRedirectDowngrade) {
@@ -6585,7 +6593,7 @@ class HttpClient {
      * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
      */
     getAgent(serverUrl) {
-        let parsedUrl = url.parse(serverUrl);
+        let parsedUrl = new URL(serverUrl);
         return this._getAgent(parsedUrl);
     }
     _prepareRequest(method, requestUrl, headers) {
@@ -6658,7 +6666,7 @@ class HttpClient {
                 maxSockets: maxSockets,
                 keepAlive: this._keepAlive,
                 proxy: {
-                    proxyAuth: proxyUrl.auth,
+                    proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`,
                     host: proxyUrl.hostname,
                     port: proxyUrl.port
                 }
@@ -6753,12 +6761,8 @@ class HttpClient {
                 else {
                     msg = 'Failed request: (' + statusCode + ')';
                 }
-                let err = new Error(msg);
-                // attach statusCode and body obj (if available) to the error object
-                err['statusCode'] = statusCode;
-                if (response.result) {
-                    err['result'] = response.result;
-                }
+                let err = new HttpClientError(msg, statusCode);
+                err.result = response.result;
                 reject(err);
             }
             else {
@@ -6773,12 +6777,11 @@ exports.HttpClient = HttpClient;
 /***/ }),
 
 /***/ 6293:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+/***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const url = __webpack_require__(8835);
 function getProxyUrl(reqUrl) {
     let usingSsl = reqUrl.protocol === 'https:';
     let proxyUrl;
@@ -6793,7 +6796,7 @@ function getProxyUrl(reqUrl) {
         proxyVar = process.env['http_proxy'] || process.env['HTTP_PROXY'];
     }
     if (proxyVar) {
-        proxyUrl = url.parse(proxyVar);
+        proxyUrl = new URL(proxyVar);
     }
     return proxyUrl;
 }
@@ -7570,7 +7573,7 @@ class HTTPError extends Error {
     constructor(httpStatusCode) {
         super(`Unexpected HTTP response: ${httpStatusCode}`);
         this.httpStatusCode = httpStatusCode;
-        Object.setPrototypeOf(this, /* unsupported import.meta.prototype */ undefined);
+        Object.setPrototypeOf(this, new.target.prototype);
     }
 }
 exports.HTTPError = HTTPError;
@@ -9838,6 +9841,16 @@ function mergeDeep(defaults, options) {
   return result;
 }
 
+function removeUndefinedProperties(obj) {
+  for (const key in obj) {
+    if (obj[key] === undefined) {
+      delete obj[key];
+    }
+  }
+
+  return obj;
+}
+
 function merge(defaults, route, options) {
   if (typeof route === "string") {
     let [method, url] = route.split(" ");
@@ -9852,7 +9865,10 @@ function merge(defaults, route, options) {
   } // lowercase header names before merging with defaults to avoid duplicates
 
 
-  options.headers = lowercaseKeys(options.headers);
+  options.headers = lowercaseKeys(options.headers); // remove properties with undefined values before merging
+
+  removeUndefinedProperties(options);
+  removeUndefinedProperties(options.headers);
   const mergedOptions = mergeDeep(defaults || {}, options); // mediaType.previews arrays are merged, instead of overwritten
 
   if (defaults && defaults.mediaType.previews.length) {
@@ -10074,7 +10090,7 @@ function parse(options) {
   // https://fetch.spec.whatwg.org/#methods
   let method = options.method.toUpperCase(); // replace :varname with {varname} to make it RFC 6570 compatible
 
-  let url = (options.url || "/").replace(/:([a-z]\w+)/g, "{+$1}");
+  let url = (options.url || "/").replace(/:([a-z]\w+)/g, "{$1}");
   let headers = Object.assign({}, options.headers);
   let body;
   let parameters = omit(options, ["method", "baseUrl", "url", "headers", "request", "mediaType"]); // extract variable names from URL to calculate remaining variables later
@@ -10159,7 +10175,7 @@ function withDefaults(oldDefaults, newDefaults) {
   });
 }
 
-const VERSION = "6.0.6";
+const VERSION = "6.0.9";
 
 const userAgent = `octokit-endpoint.js/${VERSION} ${universalUserAgent.getUserAgent()}`; // DEFAULTS has all properties set that EndpointOptions has, except url.
 // So we use RequestParameters and add method as additional required property.
@@ -10196,7 +10212,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 var request = __webpack_require__(3290);
 var universalUserAgent = __webpack_require__(2034);
 
-const VERSION = "4.5.6";
+const VERSION = "4.5.7";
 
 class GraphqlError extends Error {
   constructor(request, response) {
@@ -10459,7 +10475,7 @@ exports.paginateRest = paginateRest;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 
-const VERSION = "1.0.0";
+const VERSION = "1.0.2";
 
 /**
  * @param octokit Octokit instance
@@ -23772,7 +23788,7 @@ var isPlainObject = __webpack_require__(6330);
 var nodeFetch = _interopDefault(__webpack_require__(4496));
 var requestError = __webpack_require__(3810);
 
-const VERSION = "5.4.9";
+const VERSION = "5.4.10";
 
 function getBufferResponse(response) {
   return response.arrayBuffer();
@@ -39103,15 +39119,15 @@ __webpack_require__.r(__webpack_exports__);
 
 // EXPORTS
 __webpack_require__.d(__webpack_exports__, {
+  "NIL": () => /* reexport */ nil,
+  "parse": () => /* reexport */ esm_node_parse,
+  "stringify": () => /* reexport */ esm_node_stringify,
   "v1": () => /* reexport */ esm_node_v1,
   "v3": () => /* reexport */ esm_node_v3,
   "v4": () => /* reexport */ esm_node_v4,
   "v5": () => /* reexport */ esm_node_v5,
-  "NIL": () => /* reexport */ nil,
-  "version": () => /* reexport */ esm_node_version,
   "validate": () => /* reexport */ esm_node_validate,
-  "stringify": () => /* reexport */ esm_node_stringify,
-  "parse": () => /* reexport */ esm_node_parse
+  "version": () => /* reexport */ esm_node_version
 });
 
 // EXTERNAL MODULE: external "crypto"
@@ -39120,9 +39136,16 @@ var external_crypto_default = /*#__PURE__*/__webpack_require__.n(external_crypto
 
 // CONCATENATED MODULE: ./node_modules/uuid/dist/esm-node/rng.js
 
-const rnds8 = new Uint8Array(16);
+const rnds8Pool = new Uint8Array(256); // # of random values to pre-allocate
+
+let poolPtr = rnds8Pool.length;
 function rng() {
-  return external_crypto_default().randomFillSync(rnds8);
+  if (poolPtr > rnds8Pool.length - 16) {
+    external_crypto_default().randomFillSync(rnds8Pool);
+    poolPtr = 0;
+  }
+
+  return rnds8Pool.slice(poolPtr, poolPtr += 16);
 }
 // CONCATENATED MODULE: ./node_modules/uuid/dist/esm-node/regex.js
 /* harmony default export */ const regex = (/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000)$/i);
@@ -39713,7 +39736,7 @@ module.exports = JSON.parse("{\"_from\":\"@octokit/rest@^16.43.1\",\"_id\":\"@oc
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("assert");
+module.exports = require("assert");;
 
 /***/ }),
 
@@ -39721,7 +39744,7 @@ module.exports = require("assert");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("child_process");
+module.exports = require("child_process");;
 
 /***/ }),
 
@@ -39729,7 +39752,7 @@ module.exports = require("child_process");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("crypto");
+module.exports = require("crypto");;
 
 /***/ }),
 
@@ -39737,7 +39760,7 @@ module.exports = require("crypto");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("events");
+module.exports = require("events");;
 
 /***/ }),
 
@@ -39745,7 +39768,7 @@ module.exports = require("events");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("fs");
+module.exports = require("fs");;
 
 /***/ }),
 
@@ -39753,7 +39776,7 @@ module.exports = require("fs");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("http");
+module.exports = require("http");;
 
 /***/ }),
 
@@ -39761,7 +39784,7 @@ module.exports = require("http");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("https");
+module.exports = require("https");;
 
 /***/ }),
 
@@ -39769,7 +39792,7 @@ module.exports = require("https");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("net");
+module.exports = require("net");;
 
 /***/ }),
 
@@ -39777,7 +39800,7 @@ module.exports = require("net");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("os");
+module.exports = require("os");;
 
 /***/ }),
 
@@ -39785,7 +39808,7 @@ module.exports = require("os");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("path");
+module.exports = require("path");;
 
 /***/ }),
 
@@ -39793,7 +39816,7 @@ module.exports = require("path");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("stream");
+module.exports = require("stream");;
 
 /***/ }),
 
@@ -39801,7 +39824,7 @@ module.exports = require("stream");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("tls");
+module.exports = require("tls");;
 
 /***/ }),
 
@@ -39809,7 +39832,7 @@ module.exports = require("tls");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("url");
+module.exports = require("url");;
 
 /***/ }),
 
@@ -39817,7 +39840,7 @@ module.exports = require("url");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("util");
+module.exports = require("util");;
 
 /***/ }),
 
@@ -39825,7 +39848,7 @@ module.exports = require("util");
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("zlib");
+module.exports = require("zlib");;
 
 /***/ })
 
