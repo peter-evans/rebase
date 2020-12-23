@@ -10175,7 +10175,7 @@ function withDefaults(oldDefaults, newDefaults) {
   });
 }
 
-const VERSION = "6.0.9";
+const VERSION = "6.0.10";
 
 const userAgent = `octokit-endpoint.js/${VERSION} ${universalUserAgent.getUserAgent()}`; // DEFAULTS has all properties set that EndpointOptions has, except url.
 // So we use RequestParameters and add method as additional required property.
@@ -10212,7 +10212,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 var request = __webpack_require__(3290);
 var universalUserAgent = __webpack_require__(2034);
 
-const VERSION = "4.5.7";
+const VERSION = "4.5.8";
 
 class GraphqlError extends Error {
   constructor(request, response) {
@@ -23788,7 +23788,7 @@ var isPlainObject = __webpack_require__(6330);
 var nodeFetch = _interopDefault(__webpack_require__(4496));
 var requestError = __webpack_require__(3810);
 
-const VERSION = "5.4.10";
+const VERSION = "5.4.12";
 
 function getBufferResponse(response) {
   return response.arrayBuffer();
