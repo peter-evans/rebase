@@ -15,7 +15,10 @@ async function run(): Promise<void> {
       token: core.getInput('token'),
       repository: core.getInput('repository'),
       head: core.getInput('head'),
-      base: core.getInput('base')
+      base: core.getInput('base'),
+      preRebaseCmd: core.getInput('command-to-run-before-rebase'),
+      onConflictCommand: core.getInput('command-to-run-on-conflict'),
+      defaultBranch: core.getInput('default-branch')
     }
     core.debug(`Inputs: ${inspect(inputs)}`)
 
@@ -35,7 +38,7 @@ async function run(): Promise<void> {
       // Checkout
       const path = uuidv4()
       process.env['INPUT_PATH'] = path
-      process.env['INPUT_REF'] = 'master'
+      process.env['INPUT_REF'] = inputs.defaultBranch
       process.env['INPUT_FETCH-DEPTH'] = '0'
       process.env['INPUT_PERSIST-CREDENTIALS'] = 'true'
       const sourceSettings = inputHelper.getInputs()
@@ -45,7 +48,11 @@ async function run(): Promise<void> {
       // Rebase
       // Create a git command manager
       const git = await GitCommandManager.create(sourceSettings.repositoryPath)
-      const rebaseHelper = new RebaseHelper(git)
+      const rebaseHelper = new RebaseHelper(
+        git,
+        inputs.onConflictCommand,
+        inputs.preRebaseCmd
+      )
       let rebasedCount = 0
       for (const pull of pulls) {
         const result = await rebaseHelper.rebase(pull)

@@ -2,12 +2,33 @@ import * as core from '@actions/core'
 import {GitCommandManager} from './git-command-manager'
 import {Pull} from './pulls-helper'
 import {v4 as uuidv4} from 'uuid'
+import {CommandHelper} from './command-helper'
 
 export class RebaseHelper {
   private git: GitCommandManager
+  private onConflictCommand: string | undefined
+  private conflictCommand: CommandHelper
+  private preRebaseCmd: string | undefined
+  private rebaseCmd: CommandHelper
 
-  constructor(git: GitCommandManager) {
+  constructor(
+    git: GitCommandManager,
+    onConflictCommand: string | undefined,
+    preRebaseCmd: string | undefined
+  ) {
     this.git = git
+    this.onConflictCommand = onConflictCommand
+    this.conflictCommand = new CommandHelper(
+      git.getWorkingDirectory(),
+      onConflictCommand,
+      undefined
+    )
+    this.preRebaseCmd = preRebaseCmd
+    this.rebaseCmd = new CommandHelper(
+      git.getWorkingDirectory(),
+      preRebaseCmd,
+      undefined
+    )
   }
 
   async rebase(pull: Pull): Promise<boolean> {
@@ -84,10 +105,27 @@ export class RebaseHelper {
     ref: string
   ): Promise<RebaseResult> {
     try {
+      if (this.preRebaseCmd) {
+        try {
+          await this.rebaseCmd.exec()
+        } catch {
+          core.warning(`preRebaseCmd '${this.preRebaseCmd}' failed`)
+        }
+      }
       const result = await this.git.exec(['rebase', `${remoteName}/${ref}`])
       return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate
     } catch {
-      return RebaseResult.Failed
+      if (this.onConflictCommand) {
+        try {
+          await this.conflictCommand.exec()
+          const gitResult = await this.git.exec(['rebase', `--continue`])
+          return gitResult ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate
+        } catch {
+          return RebaseResult.Failed
+        }
+      } else {
+        return RebaseResult.Failed
+      }
     }
   }
 }

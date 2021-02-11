@@ -15,6 +15,16 @@ inputs:
     description: >
       Filter pull requests by base branch name.
       Example: gh-pages.
+  command-to-run-before-rebase:
+    description: >
+      Run this command within the branch before rebasing against `base`
+  command-to-run-on-conflict:
+    description: >
+      Run this command when a conflict is found, and try to merge again.
+  default-branch:
+    description: >
+      The default branch for the repo, defaults to master
+    default: master
 runs:
   using: 'node12'
   main: 'dist/index.js'
