@@ -10,6 +10,7 @@ import {inspect} from 'util'
 import {v4 as uuidv4} from 'uuid'
 
 async function run(): Promise<void> {
+  const errorList: string[] = []
   try {
     const inputs = {
       token: core.getInput('token'),
@@ -55,8 +56,12 @@ async function run(): Promise<void> {
       )
       let rebasedCount = 0
       for (const pull of pulls) {
-        const result = await rebaseHelper.rebase(pull)
-        if (result) rebasedCount++
+        try {
+          const result = await rebaseHelper.rebase(pull)
+          if (result) rebasedCount++
+        } catch (error) {
+          errorList.push(error.message)
+        }
       }
 
       // Output count of successful rebases
@@ -69,7 +74,14 @@ async function run(): Promise<void> {
       core.info('No pull requests found.')
     }
   } catch (error) {
-    core.setFailed(error.message)
+    errorList.push(error.message)
+  } finally {
+    for (const i of errorList) {
+      core.setFailed(i)
+    }
+    if (errorList.length > 0) {
+      core.setFailed('There were errors')
+    }
   }
 }
 
