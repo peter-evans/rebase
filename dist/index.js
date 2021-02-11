@@ -473,6 +473,7 @@ const util_1 = __nccwpck_require__(1669);
 const uuid_1 = __nccwpck_require__(4552);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
+        const errorList = [];
         try {
             const inputs = {
                 token: core.getInput('token'),
@@ -504,9 +505,14 @@ function run() {
                 const rebaseHelper = new rebase_helper_1.RebaseHelper(git, inputs.onConflictCommand, inputs.preRebaseCmd);
                 let rebasedCount = 0;
                 for (const pull of pulls) {
-                    const result = yield rebaseHelper.rebase(pull);
-                    if (result)
-                        rebasedCount++;
+                    try {
+                        const result = yield rebaseHelper.rebase(pull);
+                        if (result)
+                            rebasedCount++;
+                    }
+                    catch (error) {
+                        errorList.push(error.message);
+                    }
                 }
                 // Output count of successful rebases
                 core.setOutput('rebased-count', rebasedCount);
@@ -519,7 +525,15 @@ function run() {
             }
         }
         catch (error) {
-            core.setFailed(error.message);
+            errorList.push(error.message);
+        }
+        finally {
+            for (const i of errorList) {
+                core.setFailed(i);
+            }
+            if (errorList.length > 0) {
+                core.setFailed('There were errors');
+            }
         }
     });
 }
