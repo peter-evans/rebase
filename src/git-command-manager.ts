@@ -1,4 +1,5 @@
 import * as exec from '@actions/exec'
+import * as core from '@actions/core'
 import * as io from '@actions/io'
 import * as utils from './utils'
 import * as path from 'path'
@@ -279,10 +280,12 @@ export class GitCommandManager {
         }
       }
     }
-
+    core.debug(`[stdin] ${this.gitPath} ${args.join(' ')}`)
     result.exitCode = await exec.exec(`"${this.gitPath}"`, args, options)
     result.stdout = stdout.join('')
+    core.debug(`[stdout] ${result.stdout}`)
     result.stderr = stderr.join('')
+    core.debug(`[stderr] ${result.stderr}`)
     return result
   }
 }

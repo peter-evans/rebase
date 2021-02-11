@@ -77,7 +77,7 @@ async function run(): Promise<void> {
     errorList.push(error.message)
   } finally {
     for (const i of errorList) {
-      core.setFailed(i)
+      core.error(i)
     }
     if (errorList.length > 0) {
       core.setFailed('There were errors')

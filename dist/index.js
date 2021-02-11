@@ -141,6 +141,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.GitCommandManager = void 0;
 const exec = __importStar(__nccwpck_require__(1514));
+const core = __importStar(__nccwpck_require__(2186));
 const io = __importStar(__nccwpck_require__(7436));
 const utils = __importStar(__nccwpck_require__(918));
 const path = __importStar(__nccwpck_require__(5622));
@@ -384,9 +385,12 @@ class GitCommandManager {
                     }
                 }
             };
+            core.debug(`[stdin] ${this.gitPath} ${args.join(' ')}`);
             result.exitCode = yield exec.exec(`"${this.gitPath}"`, args, options);
             result.stdout = stdout.join('');
+            core.debug(`[stdout] ${result.stdout}`);
             result.stderr = stderr.join('');
+            core.debug(`[stderr] ${result.stderr}`);
             return result;
         });
     }
@@ -529,7 +533,7 @@ function run() {
         }
         finally {
             for (const i of errorList) {
-                core.setFailed(i);
+                core.error(i);
             }
             if (errorList.length > 0) {
                 core.setFailed('There were errors');
@@ -762,6 +766,7 @@ class RebaseHelper {
             try {
                 if (this.preRebaseCmd) {
                     try {
+                        core.debug(`Running pre-rebase command: ${this.preRebaseCmd}`);
                         yield this.rebaseCmd.exec();
                     }
                     catch (_a) {
@@ -772,8 +777,9 @@ class RebaseHelper {
                 return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate;
             }
             catch (_b) {
-                if (this.onConflictCommand) {
+                if (this.onConflictCommand != undefined) {
                     try {
+                        core.debug(`Running conflict command: ${this.onConflictCommand}`);
                         yield this.conflictCommand.exec();
                         const gitResult = yield this.git.exec(['rebase', `--continue`]);
                         return gitResult ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate;

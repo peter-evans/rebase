@@ -107,6 +107,7 @@ export class RebaseHelper {
     try {
       if (this.preRebaseCmd) {
         try {
+          core.debug(`Running pre-rebase command: ${this.preRebaseCmd}`)
           await this.rebaseCmd.exec()
         } catch {
           core.warning(`preRebaseCmd '${this.preRebaseCmd}' failed`)
@@ -115,8 +116,9 @@ export class RebaseHelper {
       const result = await this.git.exec(['rebase', `${remoteName}/${ref}`])
       return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate
     } catch {
-      if (this.onConflictCommand) {
+      if (this.onConflictCommand != undefined) {
         try {
+          core.debug(`Running conflict command: ${this.onConflictCommand}`)
           await this.conflictCommand.exec()
           const gitResult = await this.git.exec(['rebase', `--continue`])
           return gitResult ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate
