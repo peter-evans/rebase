@@ -55,10 +55,15 @@ async function run(): Promise<void> {
         inputs.preRebaseCmd
       )
       let rebasedCount = 0
+      let failedRebaseCount = 0
       for (const pull of pulls) {
         try {
           const result = await rebaseHelper.rebase(pull)
-          if (result) rebasedCount++
+          if (result) {
+            rebasedCount++
+          } else {
+            failedRebaseCount++
+          }
         } catch (error) {
           errorList.push(error.message)
         }
@@ -66,6 +71,7 @@ async function run(): Promise<void> {
 
       // Output count of successful rebases
       core.setOutput('rebased-count', rebasedCount)
+      core.setOutput('failed-rebased-count', failedRebaseCount)
 
       // Delete the repository
       core.debug(`Removing repo at '${sourceSettings.repositoryPath}'`)
