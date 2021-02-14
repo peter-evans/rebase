@@ -120,12 +120,7 @@ export class RebaseHelper {
         try {
           core.debug(`Running conflict command: ${this.onConflictCommand}`)
           await this.conflictCommand.exec()
-          const gitResult = await this.git.exec([
-            'rebase',
-            `--continue`,
-            `-m`,
-            `"Fixed conflicts in files"`
-          ])
+          const gitResult = await this.git.exec(['rebase', `--continue`])
           return gitResult ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate
         } catch {
           return RebaseResult.Failed
