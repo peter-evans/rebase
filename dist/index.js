@@ -787,7 +787,12 @@ class RebaseHelper {
                     try {
                         core.debug(`Running conflict command: ${this.onConflictCommand}`);
                         yield this.conflictCommand.exec();
-                        const gitResult = yield this.git.exec(['rebase', `--continue`]);
+                        const gitResult = yield this.git.exec([
+                            'rebase',
+                            `--continue`,
+                            `-m`,
+                            `"Fixed conflicts in files"`
+                        ]);
                         return gitResult ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate;
                     }
                     catch (_c) {
