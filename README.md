@@ -6,7 +6,7 @@ A GitHub action to rebase pull requests in a repository.
 
 ## Usage
 
-The default behaviour of the action with no configured inputs is to check the current repository for rebaseable pull requests and rebase them.
+The default behavior of the action with no configured inputs is to check the current repository for rebaseable pull requests and rebase them.
 Pull requests from forks are rebaseable only if they [allow edits from maintainers](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/allowing-changes-to-a-pull-request-branch-created-from-a-fork).
 
 ```yml
@@ -44,6 +44,28 @@ jobs:
         with:
           base: master
 ```
+
+### Run commands before and after a rebase to handle rebase conflicts
+
+```yml
+name: Rebase Open PR's after a Merge to Dev
+on:
+  push:
+    branches:
+      - dev
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Broadshield/rebase@master
+        with:
+          base: dev
+          default-branch: dev
+          command-to-run-before-rebase: bash -c "grep -m 1 -Po '<version>\K[^<]*' pom.xml > version.tmp"
+          command-to-run-on-conflict: bash -c ".github/scripts/fix_version_conflicts.rb -s git -v $(cat version.tmp);git add pom.xml;git commit -m \"Fix merge conflict\""
+```
+
+**NOTE:** This example is using the ruby script for fixing conflicting version numbers in a pom file for maven projects found [here](https://gist.github.com/brettporter/1723108)
 
 ### Rebase slash command
 
@@ -93,12 +115,15 @@ jobs:
 
 ### Action inputs
 
-| Name | Description | Default |
-| --- | --- | --- |
-| `token` | `GITHUB_TOKEN` or a `repo` scoped [PAT](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token). | `GITHUB_TOKEN` |
-| `repository` | The target GitHub repository containing the pull request. | `github.repository` (Current repository) |
-| `head` | Filter pull requests by head user or head organization and branch name in the format `user:ref-name` or `organization:ref-name`. For example: `github:new-script-format` or `octocat:test-branch`. | |
-| `base` | Filter pull requests by base branch name. Example: `gh-pages`. | |
+| Name                           | Description                                                                                                                                                                                        | Default                                  |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `token`                        | `GITHUB_TOKEN` or a `repo` scoped [PAT](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token).                                                              | `GITHUB_TOKEN`                           |
+| `repository`                   | The target GitHub repository containing the pull request.                                                                                                                                          | `github.repository` (Current repository) |
+| `head`                         | Filter pull requests by head user or head organization and branch name in the format `user:ref-name` or `organization:ref-name`. For example: `github:new-script-format` or `octocat:test-branch`. |                                          |
+| `base`                         | Filter pull requests by base branch name. Example: `gh-pages`.                                                                                                                                     |                                          |
+| `command-to-run-before-rebase` | Run this command within the branch before rebasing against `base`                                                                                                                                  |                                          |
+| `command-to-run-on-conflict`   | Run this command when a conflict is found, and try to merge again.                                                                                                                                 |                                          |
+| `default-branch`               | The default branch for the repo, defaults to master                                                                                                                                                | `master`                                 |
 
 ### Target other repositories
 

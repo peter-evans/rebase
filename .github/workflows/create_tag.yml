@@ -1,0 +1,42 @@
+name: 🏷️ Create Tag
+on:
+  push:
+    branches:
+      - "master"
+    tags-ignore:
+      - "**"
+
+jobs:
+  tag:
+    runs-on: Ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        name: Checkout
+
+      - name: "Automated Version Bump"
+        id: version-bump
+        uses: "phips28/gh-action-bump-version@v8.0.18"
+        with:
+          tag-prefix: ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v5.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          dry_run: true
+          tag_prefix: ''
+          custom_tag: ${{steps.version-bump.outputs.newTag}}
+
+      - name: Create a GitHub release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{steps.version-bump.outputs.newTag}}
+          release_name: Release ${{steps.version-bump.outputs.newTag}}
+          body: ${{ steps.tag_version.outputs.changelog }}
+
+
