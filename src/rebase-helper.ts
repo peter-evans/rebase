@@ -18,15 +18,15 @@ export class RebaseHelper {
   ) {
     this.git = git
     this.onConflictCommand = onConflictCommand
+    this.preRebaseCmd = preRebaseCmd
     this.conflictCommand = new CommandHelper(
-      git.getWorkingDirectory(),
-      onConflictCommand,
+      this.git.getWorkingDirectory(),
+      this.onConflictCommand,
       undefined
     )
-    this.preRebaseCmd = preRebaseCmd
     this.rebaseCmd = new CommandHelper(
-      git.getWorkingDirectory(),
-      preRebaseCmd,
+      this.git.getWorkingDirectory(),
+      this.preRebaseCmd,
       undefined
     )
   }
@@ -85,11 +85,10 @@ export class RebaseHelper {
         `Head ref '${pull.headRef}' is already up to date with the base.`
       )
     } else if (result == RebaseResult.Failed) {
-      core.info(
+      core.warning(
         `Rebase of head ref '${pull.headRef}' failed. Conflicts must be resolved manually.`
       )
     }
-
     return false
   }
 
@@ -123,6 +122,8 @@ export class RebaseHelper {
           const gitResult = await this.git.exec(['rebase', `--continue`])
           return gitResult ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate
         } catch {
+          await this.git.exec(['rebase', `--abort`])
+          // await this.git.exec(['revert', `--no-edit`])
           return RebaseResult.Failed
         }
       } else {

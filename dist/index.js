@@ -160,6 +160,12 @@ class GitCommandManager {
     setIdentityGitOptions(identityGitOptions) {
         this.identityGitOptions = identityGitOptions;
     }
+    reset() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const args = ['reset', '--hard'];
+            yield this.exec(args);
+        });
+    }
     checkout(ref, startPoint) {
         return __awaiter(this, void 0, void 0, function* () {
             const args = ['checkout', '--progress'];
@@ -708,9 +714,9 @@ class RebaseHelper {
     constructor(git, onConflictCommand, preRebaseCmd) {
         this.git = git;
         this.onConflictCommand = onConflictCommand;
-        this.conflictCommand = new command_helper_1.CommandHelper(git.getWorkingDirectory(), onConflictCommand, undefined);
         this.preRebaseCmd = preRebaseCmd;
-        this.rebaseCmd = new command_helper_1.CommandHelper(git.getWorkingDirectory(), preRebaseCmd, undefined);
+        this.conflictCommand = new command_helper_1.CommandHelper(this.git.getWorkingDirectory(), this.onConflictCommand, undefined);
+        this.rebaseCmd = new command_helper_1.CommandHelper(this.git.getWorkingDirectory(), this.preRebaseCmd, undefined);
     }
     rebase(pull) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -754,7 +760,7 @@ class RebaseHelper {
                 core.info(`Head ref '${pull.headRef}' is already up to date with the base.`);
             }
             else if (result == RebaseResult.Failed) {
-                core.info(`Rebase of head ref '${pull.headRef}' failed. Conflicts must be resolved manually.`);
+                core.warning(`Rebase of head ref '${pull.headRef}' failed. Conflicts must be resolved manually.`);
             }
             return false;
         });
@@ -791,6 +797,8 @@ class RebaseHelper {
                         return gitResult ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate;
                     }
                     catch (_c) {
+                        yield this.git.exec(['rebase', `--abort`]);
+                        // await this.git.exec(['revert', `--no-edit`])
                         return RebaseResult.Failed;
                     }
                 }

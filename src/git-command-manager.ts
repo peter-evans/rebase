@@ -26,6 +26,11 @@ export class GitCommandManager {
     this.identityGitOptions = identityGitOptions
   }
 
+  async reset(): Promise<void> {
+    const args = ['reset', '--hard']
+    await this.exec(args)
+  }
+
   async checkout(ref: string, startPoint?: string): Promise<void> {
     const args = ['checkout', '--progress']
     if (startPoint) {
