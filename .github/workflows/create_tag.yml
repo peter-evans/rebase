@@ -18,13 +18,13 @@ jobs:
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
         run: echo "::set-output name=dir::$(yarn cache dir)"
-     - uses: actions/cache@v1
-       id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
-       with:
-         path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-         restore-keys: |
-           ${{ runner.os }}-yarn-
+      - uses: actions/cache@v1
+        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
       - name: Bump version and push tag
         id: tag_version
         uses: mathieudutour/github-tag-action@v5.1
@@ -35,30 +35,32 @@ jobs:
       - name: Install project dependencies
         run: yarn --prefer-offline
       - name: Update version
+        id: version
+        env:
+          CHANGELOG: ${{ steps.tag_version.outputs.changelog }}
         run: |
+          git config user.name "${GITHUB_USER:-github-actions}"
+          git config user.email "${GITHUB_EMAIL:-github-actions@github.com}"
           yarn run build-checkout
           yarn run build
-          current_version=$(node -p -e "require('./package.json').version")
-          yarn version --patch
-
-      - run: yarn run generate-docs
-      - name: "Automated Version Bump - publish version"
-        id: version-bump
-        uses: "phips28/gh-action-bump-version@v8.0.18"
-        with:
-          tag-prefix: 'v'
-          skip-tag: 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          yarn config set version-tag-prefix "v"
+          yarn config set version-commit-hooks true
+          yarn config set version-git-tag true
+          yarn config set version-sign-git-tag false
+          ## yarn version will update the README to 
+          ## show the new tagged version in the examples
+          ## and also creates a step output called 'tag' which is the new version
+          CHANGELOG="$(print "# v%s\n${CHANGELOG:-}")"
+          echo "${CHANGELOG}"
+          yarn version --patch --message "${CHANGELOG}"
 
       - name: Create a GitHub release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{steps.version-bump.outputs.newTag}}
-          release_name: Release ${{steps.version-bump.outputs.newTag}}
+          tag_name: ${{steps.version.outputs.tag}}
+          release_name: Release ${{steps.version.outputs.tag}}
           body: ${{ steps.tag_version.outputs.changelog }}
 
 
