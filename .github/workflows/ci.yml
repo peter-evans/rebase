@@ -74,7 +74,7 @@ jobs:
           token: ${{ secrets.ACTIONS_BOT_TOKEN }}
           repository: peter-evans/rebase-test-fixture-${{ matrix.target }}
           head: peter-evans:test-fixtures/1/head
-      - if: steps.rebase1.outputs.rebased-count != 1
+      - if: steps.rebase1.outputs.rebased-count != 1 && github.repository == 'peter-evans/rebase'
         run: exit 1
 
       - name: Rebase with base filter
@@ -85,7 +85,7 @@ jobs:
           token: ${{ secrets.ACTIONS_BOT_TOKEN }}
           repository: peter-evans/rebase-test-fixture-${{ matrix.target }}
           base: test-fixtures/2/base
-      - if: steps.rebase2.outputs.rebased-count != 1
+      - if: steps.rebase2.outputs.rebased-count != 1 && github.repository == 'peter-evans/rebase'
         run: exit 1
 
       - name: Rebase
@@ -95,7 +95,7 @@ jobs:
         with:
           token: ${{ secrets.ACTIONS_BOT_TOKEN }}
           repository: peter-evans/rebase-test-fixture-${{ matrix.target }}
-      - if: steps.rebase3.outputs.rebased-count < 2
+      - if: steps.rebase3.outputs.rebased-count < 2 && github.repository == 'peter-evans/rebase'
         run: exit 1
 
   package:
