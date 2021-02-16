@@ -88,7 +88,7 @@ jobs:
   rebase:
     runs-on: Ubuntu-20.04
     steps:
-      - uses: Broadshield/rebase@master
+      - uses: peter-evans/rebase@v1.0.5
         with:
           base: dev
           default-branch: dev
