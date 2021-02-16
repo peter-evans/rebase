@@ -1,4 +1,4 @@
-name: 🏷️ Create Tag
+name: 🏷️ Update Package Version and Create Tag
 on:
   push:
     branches:
@@ -12,6 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         name: Checkout
+        with:
+          ref: master
+      - name: Set Git User Details
+        run: |
+          git config user.name "${GITHUB_USER:-github-actions}"
+          git config user.email "${GITHUB_EMAIL:-github-actions@github.com}"
       - uses: actions/setup-node@v1
         with:
           node-version: 12.x
@@ -34,24 +40,24 @@ jobs:
           dry_run: 'true'
       - name: Install project dependencies
         run: yarn --prefer-offline
-      - name: Update version
-        id: version
-        env:
-          CHANGELOG: ${{ steps.tag_version.outputs.changelog }}
-        run: |
-          git config user.name "${GITHUB_USER:-github-actions}"
-          git config user.email "${GITHUB_EMAIL:-github-actions@github.com}"
-          yarn run build-checkout
-          yarn run build
+      - run: yarn run build-checkout
+      - run: yarn run build
+      - run: git add dist/index.js
+      - run: |
           yarn config set version-tag-prefix "v"
           yarn config set version-commit-hooks true
           yarn config set version-git-tag true
           yarn config set version-sign-git-tag false
-          ## yarn version will update the README to 
-          ## show the new tagged version in the examples
+      - name: Update version
+        id: version
+        env:
+          CHANGELOG: |
+            # v%s
+            ${{ steps.tag_version.outputs.changelog }}
+        run: |
+          ## yarn version will update the README with the new tagged version in the examples
           ## and also creates a step output called 'tag' which is the new version
-          CHANGELOG="$(print "# v%s\n${CHANGELOG:-}")"
-          echo "${CHANGELOG}"
+          set -x
           yarn version --patch --message "${CHANGELOG}"
 
       - name: Create a GitHub release

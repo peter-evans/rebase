@@ -12,10 +12,10 @@
     "format-check": "prettier --check '**/*.ts'",
     "lint": "eslint --fix src/**/*.ts",
     "test": "jest unit",
-    "preversion": "yarn test",
-    "version": "yarn generate-docs;echo \"::set-output name=tag::v${npm_package_version}\"",
-    "postversion": "git push --tags && git push && echo \"Successfully released version $npm_package_version!\"",
-    "generate-docs": "if [ ! -f './lib/misc/generate-docs.js' ];then yarn run build;fi; node -e \"require('./lib/misc/generate-docs.js').updateUsage(actionReference='peter-evans/rebase@v' + require('./package.json').version.toString())\" && sed -i '' \"s|peter-evans/rebase@\\(.*\\)\\$|peter-evans/rebase@$(node -p -e \"require('./package.json').version\")|g\" README.md"
+    "preversion": "echo 'Running test';yarn test",
+    "version": "echo 'Run versioning commands';yarn generate-docs;echo \"::set-output name=tag::v${npm_package_version}\"",
+    "postversion": "echo 'Running post versioning commands';git push --tags && git push && echo \"Successfully released version $npm_package_version!\"",
+    "generate-docs": "echo 'Generating docs';if [ ! -f 'lib/misc/generate-docs.js' ];then yarn run build;fi; node -e \"require('./lib/misc/generate-docs.js').updateUsage(actionReference='peter-evans/rebase@v' + require('./package.json').version.toString())\" && sed -i \"s|peter-evans/rebase@\\(.*\\)\\$|peter-evans/rebase@$(node -p -e \"require('./package.json').version\")|g\" README.md;git add README.md"
   },
   "repository": {
     "type": "git",
