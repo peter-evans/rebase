@@ -15,7 +15,7 @@
     "preversion": "echo 'Running test';yarn test",
     "version": "echo 'Run versioning commands';yarn generate-docs;echo \"::set-output name=tag::v${npm_package_version}\"",
     "postversion": "echo 'Running post versioning commands';git push --tags && git push && echo \"Successfully released version $npm_package_version!\"",
-    "generate-docs": "echo 'Generating docs';if [ ! -f 'lib/misc/generate-docs.js' ];then yarn run build;fi; node -e \"require('./lib/misc/generate-docs.js').updateUsage(actionReference='${{github.repository}}@v' + require('./package.json').version.toString())\" && sed -i \"s|${{github.repository}}@\\(.*\\)\\$|${{github.repository}}@v$(node -p -e \"require('./package.json').version\")|g\" README.md;git add README.md"
+    "generate-docs": "echo 'Generating docs';if [ ! -f 'lib/misc/generate-docs.js' ];then yarn run build;fi; node -e \"require('./lib/misc/generate-docs.js').updateUsage(actionReference='${GITHUB_REPOSITORY:-peter-evans/rebase}@v' + require('./package.json').version.toString())\" && sed -i \"s|${GITHUB_REPOSITORY:-peter-evans/rebase}@\\(.*\\)\\$|${GITHUB_REPOSITORY:-peter-evans/rebase}@v$(node -p -e \"require('./package.json').version\")|g\" README.md;git add README.md"
   },
   "repository": {
     "type": "git",
