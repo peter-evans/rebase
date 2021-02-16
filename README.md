@@ -14,7 +14,7 @@ Pull requests from forks are rebaseable only if they [allow edits from maintaine
 
 <!-- start usage -->
 ```yaml
-- uses: peter-evans/rebase@1.0.6
+- uses: Broadshield/rebase@v1.0.8
   with:
     # GitHub auth token
     # Default: ${{ github.token }}
