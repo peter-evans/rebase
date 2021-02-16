@@ -12,18 +12,29 @@ on:
       - 'docs/**'
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: Ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
         with:
           node-version: 12.x
-      - run: npm ci
-      - run: npm run build-checkout
-      - run: npm run build
-      - run: npm run format-check
-      - run: npm run lint
-      - run: npm run test
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+     - uses: actions/cache@v1
+       id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+       with:
+         path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+         restore-keys: |
+           ${{ runner.os }}-yarn-
+      - name: Install project dependencies
+        run: yarn --prefer-offline
+      - run: yarn run build-checkout
+      - run: yarn run build
+      - run: yarn run format-check
+      - run: yarn run lint
+      - run: yarn run test
       - uses: actions/upload-artifact@v2
         with:
           name: dist
@@ -36,7 +47,7 @@ jobs:
   test:
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     needs: [build]
-    runs-on: ubuntu-latest
+    runs-on: Ubuntu-20.04
     strategy:
       matrix:
         target: [built, committed]
@@ -87,7 +98,7 @@ jobs:
   package:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     needs: [test]
-    runs-on: ubuntu-latest
+    runs-on: Ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
       - uses: actions/download-artifact@v2

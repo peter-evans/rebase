@@ -12,23 +12,45 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         name: Checkout
-
-      - name: "Automated Version Bump"
-        id: version-bump
-        uses: "phips28/gh-action-bump-version@v8.0.18"
+      - uses: actions/setup-node@v1
         with:
-          tag-prefix: ''
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          node-version: 12.x
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+     - uses: actions/cache@v1
+       id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+       with:
+         path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+         restore-keys: |
+           ${{ runner.os }}-yarn-
       - name: Bump version and push tag
         id: tag_version
         uses: mathieudutour/github-tag-action@v5.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          dry_run: true
           tag_prefix: ''
-          custom_tag: ${{steps.version-bump.outputs.newTag}}
+          dry_run: 'true'
+      - name: Install project dependencies
+        run: yarn --prefer-offline
+      - name: Update version
+        run: |
+          yarn run build-checkout
+          yarn run build
+          current_version=$(node -p -e "require('./package.json').version")
+          yarn version --patch
+
+      - run: yarn run generate-docs
+      - name: "Automated Version Bump - publish version"
+        id: version-bump
+        uses: "phips28/gh-action-bump-version@v8.0.18"
+        with:
+          tag-prefix: 'v'
+          skip-tag: 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
       - name: Create a GitHub release
         uses: actions/create-release@v1
