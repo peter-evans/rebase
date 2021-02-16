@@ -14,7 +14,7 @@ Pull requests from forks are rebaseable only if they [allow edits from maintaine
 
 <!-- start usage -->
 ```yaml
-- uses: peter-evans/rebase@1.0.4
+- uses: peter-evans/rebase@1.0.5
   with:
     # GitHub auth token
     # Default: ${{ github.token }}
@@ -57,7 +57,7 @@ jobs:
   rebase:
     runs-on: Ubuntu-20.04
     steps:
-      - uses: peter-evans/rebase@1.0.4
+      - uses: peter-evans/rebase@1.0.5
 ```
 
 ### Rebase all pull requests on push to the base branch
@@ -71,7 +71,7 @@ jobs:
   rebase:
     runs-on: Ubuntu-20.04
     steps:
-      - uses: peter-evans/rebase@1.0.4
+      - uses: peter-evans/rebase@1.0.5
         with:
           base: master
 ```
@@ -152,7 +152,7 @@ jobs:
         repo: ['my-org/repo1', 'my-org/repo2', 'my-org/repo3']
     runs-on: Ubuntu-20.04
     steps:
-      - uses: peter-evans/rebase@1.0.4
+      - uses: peter-evans/rebase@1.0.5
         with:
           token: ${{ secrets.PAT }}
           repository: ${{ matrix.repo }}
