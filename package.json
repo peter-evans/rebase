@@ -6,7 +6,7 @@
   "main": "lib/main.js",
   "scripts": {
     "clean": "rm -rf node_modules package-lock.json",
-    "build-checkout": "npm install --prefix node_modules/checkout && npm run build --prefix node_modules/checkout",
+    "build-checkout": "npm install --prefix node_modules/checkout --force && npm run build --prefix node_modules/checkout",
     "build": "tsc && ncc build",
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
