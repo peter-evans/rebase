@@ -35,7 +35,6 @@ async function run(): Promise<void> {
       // Checkout
       const path = uuidv4()
       process.env['INPUT_PATH'] = path
-      process.env['INPUT_REF'] = 'master'
       process.env['INPUT_FETCH-DEPTH'] = '0'
       process.env['INPUT_PERSIST-CREDENTIALS'] = 'true'
       const sourceSettings = inputHelper.getInputs()
