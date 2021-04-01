@@ -3249,7 +3249,7 @@ class GitAuthHelper {
                 const configPaths = output.match(/(?<=(^|\n)file:)[^\t]+(?=\tremote\.origin\.url)/g) || [];
                 for (const configPath of configPaths) {
                     core.debug(`Replacing token placeholder in '${configPath}'`);
-                    this.replaceTokenPlaceholder(configPath);
+                    yield this.replaceTokenPlaceholder(configPath);
                 }
                 if (this.settings.sshKey) {
                     // Configure core.sshCommand
@@ -3591,6 +3591,33 @@ class GitCommandManager {
             }));
         });
     }
+    getDefaultBranch(repositoryUrl) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let output;
+            yield retryHelper.execute(() => __awaiter(this, void 0, void 0, function* () {
+                output = yield this.execGit([
+                    'ls-remote',
+                    '--quiet',
+                    '--exit-code',
+                    '--symref',
+                    repositoryUrl,
+                    'HEAD'
+                ]);
+            }));
+            if (output) {
+                // Satisfy compiler, will always be set
+                for (let line of output.stdout.trim().split('\n')) {
+                    line = line.trim();
+                    if (line.startsWith('ref:') || line.endsWith('HEAD')) {
+                        return line
+                            .substr('ref:'.length, line.length - 'ref:'.length - 'HEAD'.length)
+                            .trim();
+                    }
+                }
+            }
+            throw new Error('Unexpected output when retrieving default branch');
+        });
+    }
     getWorkingDirectory() {
         return this.workingDirectory;
     }
@@ -3620,9 +3647,11 @@ class GitCommandManager {
             yield this.execGit(['lfs', 'install', '--local']);
         });
     }
-    log1() {
+    log1(format) {
         return __awaiter(this, void 0, void 0, function* () {
-            const output = yield this.execGit(['log', '-1']);
+            var args = format ? ['log', '-1', format] : ['log', '-1'];
+            var silent = format ? false : true;
+            const output = yield this.execGit(args, false, silent);
             return output.stdout;
         });
     }
@@ -3637,7 +3666,7 @@ class GitCommandManager {
     /**
      * Resolves a ref to a SHA. For a branch or lightweight tag, the commit SHA is returned.
      * For an annotated tag, the tag SHA is returned.
-     * @param {string} ref  For example: 'refs/heads/master' or '/refs/tags/v1'
+     * @param {string} ref  For example: 'refs/heads/main' or '/refs/tags/v1'
      * @returns {Promise<string>}
      */
     revParse(ref) {
@@ -3744,7 +3773,7 @@ class GitCommandManager {
             return result;
         });
     }
-    execGit(args, allowAllExitCodes = false) {
+    execGit(args, allowAllExitCodes = false, silent = false) {
         return __awaiter(this, void 0, void 0, function* () {
             fshelper.directoryExistsSync(this.workingDirectory, true);
             const result = new GitOutput();
@@ -3759,6 +3788,7 @@ class GitCommandManager {
             const options = {
                 cwd: this.workingDirectory,
                 env,
+                silent,
                 ignoreReturnCode: allowAllExitCodes,
                 listeners: {
                     stdout: (data) => {
@@ -4080,6 +4110,17 @@ function getSource(settings) {
             core.startGroup('Setting up auth');
             yield authHelper.configureAuth();
             core.endGroup();
+            // Determine the default branch
+            if (!settings.ref && !settings.commit) {
+                core.startGroup('Determining the default branch');
+                if (settings.sshKey) {
+                    settings.ref = yield git.getDefaultBranch(repositoryUrl);
+                }
+                else {
+                    settings.ref = yield githubApiHelper.getDefaultBranch(settings.authToken, settings.repositoryOwner, settings.repositoryName);
+                }
+                core.endGroup();
+            }
             // LFS install
             if (settings.lfs) {
                 yield git.lfsInstall();
@@ -4143,8 +4184,10 @@ function getSource(settings) {
                     yield authHelper.removeGlobalAuth();
                 }
             }
-            // Dump some info about the checked out commit
+            // Get commit information
             const commitInfo = yield git.log1();
+            // Log commit sha
+            yield git.log1("--format='%H'");
             // Check for incorrect pull request merge commit
             yield refHelper.checkCommitInfo(settings.authToken, commitInfo, settings.repositoryOwner, settings.repositoryName, settings.ref, settings.commit);
         }
@@ -4316,7 +4359,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.downloadRepository = void 0;
+exports.getDefaultBranch = exports.downloadRepository = void 0;
 const assert = __importStar(__nccwpck_require__(2357));
 const core = __importStar(__nccwpck_require__(5814));
 const fs = __importStar(__nccwpck_require__(5747));
@@ -4329,6 +4372,11 @@ const v4_1 = __importDefault(__nccwpck_require__(9486));
 const IS_WINDOWS = process.platform === 'win32';
 function downloadRepository(authToken, owner, repo, ref, commit, repositoryPath) {
     return __awaiter(this, void 0, void 0, function* () {
+        // Determine the default branch
+        if (!ref && !commit) {
+            core.info('Determining the default branch');
+            ref = yield getDefaultBranch(authToken, owner, repo);
+        }
         // Download the archive
         let archiveData = yield retryHelper.execute(() => __awaiter(this, void 0, void 0, function* () {
             core.info('Downloading the archive');
@@ -4350,7 +4398,7 @@ function downloadRepository(authToken, owner, repo, ref, commit, repositoryPath)
         else {
             yield toolCache.extractTar(archivePath, extractPath);
         }
-        io.rmRF(archivePath);
+        yield io.rmRF(archivePath);
         // Determine the path of the repository content. The archive contains
         // a top-level folder and the repository content is inside.
         const archiveFileNames = yield fs.promises.readdir(extractPath);
@@ -4369,10 +4417,46 @@ function downloadRepository(authToken, owner, repo, ref, commit, repositoryPath)
                 yield io.mv(sourcePath, targetPath);
             }
         }
-        io.rmRF(extractPath);
+        yield io.rmRF(extractPath);
     });
 }
 exports.downloadRepository = downloadRepository;
+/**
+ * Looks up the default branch name
+ */
+function getDefaultBranch(authToken, owner, repo) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield retryHelper.execute(() => __awaiter(this, void 0, void 0, function* () {
+            core.info('Retrieving the default branch name');
+            const octokit = new github.GitHub(authToken);
+            let result;
+            try {
+                // Get the default branch from the repo info
+                const response = yield octokit.repos.get({ owner, repo });
+                result = response.data.default_branch;
+                assert.ok(result, 'default_branch cannot be empty');
+            }
+            catch (err) {
+                // Handle .wiki repo
+                if (err['status'] === 404 && repo.toUpperCase().endsWith('.WIKI')) {
+                    result = 'master';
+                }
+                // Otherwise error
+                else {
+                    throw err;
+                }
+            }
+            // Print the default branch
+            core.info(`Default branch '${result}'`);
+            // Prefix with 'refs/heads'
+            if (!result.startsWith('refs/')) {
+                result = `refs/heads/${result}`;
+            }
+            return result;
+        }));
+    });
+}
+exports.getDefaultBranch = getDefaultBranch;
 function downloadArchive(authToken, owner, repo, ref, commit) {
     return __awaiter(this, void 0, void 0, function* () {
         const octokit = new github.GitHub(authToken);
@@ -4461,13 +4545,10 @@ function getInputs() {
             result.ref = github.context.ref;
             result.commit = github.context.sha;
             // Some events have an unqualifed ref. For example when a PR is merged (pull_request closed event),
-            // the ref is unqualifed like "master" instead of "refs/heads/master".
+            // the ref is unqualifed like "main" instead of "refs/heads/main".
             if (result.commit && result.ref && !result.ref.startsWith('refs/')) {
                 result.ref = `refs/heads/${result.ref}`;
             }
-        }
-        if (!result.ref && !result.commit) {
-            result.ref = 'refs/heads/master';
         }
     }
     // SHA?
@@ -4503,7 +4584,7 @@ function getInputs() {
     core.debug(`submodules = ${result.submodules}`);
     core.debug(`recursive submodules = ${result.nestedSubmodules}`);
     // Auth token
-    result.authToken = core.getInput('token');
+    result.authToken = core.getInput('token', { required: true });
     // SSH
     result.sshKey = core.getInput('ssh-key');
     result.sshKnownHosts = core.getInput('ssh-known-hosts');
