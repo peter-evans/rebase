@@ -35,14 +35,14 @@ jobs:
 name: Rebase
 on:
   push:
-    branches: [master]
+    branches: [main]
 jobs:
   rebase:
     runs-on: ubuntu-latest
     steps:
       - uses: peter-evans/rebase@v1
         with:
-          base: master
+          base: main
 ```
 
 ### Rebase slash command
