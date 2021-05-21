@@ -100,6 +100,8 @@ jobs:
 | `head` | Filter pull requests by head user or head organization and branch name in the format `user:ref-name` or `organization:ref-name`. For example: `github:new-script-format` or `octocat:test-branch`. | |
 | `base` | Filter pull requests by base branch name. Example: `gh-pages`. | |
 
+Note: Your [PAT](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) may also need the `workflow` scope if rebasing pull requests containing changes to workflows under `.github/workflows`.
+
 ### Target other repositories
 
 You can rebase requests in another repository by using a `repo` scoped [PAT](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) instead of `GITHUB_TOKEN`.
