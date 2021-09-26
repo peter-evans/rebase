@@ -54,6 +54,8 @@ export class PullsHelper {
     const filteredPulls = pulls.repository.pullRequests.edges
       .map(p => {
         if (
+          // Filter out pull requests where the head repo and/or branch has been deleted prematurely
+          p.node.headRepository &&
           // Filter on head owner since the query only filters on head ref
           (headOwner.length == 0 ||
             p.node.headRepositoryOwner.login == headOwner) &&
