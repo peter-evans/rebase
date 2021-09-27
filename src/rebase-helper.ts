@@ -67,6 +67,8 @@ export class RebaseHelper {
       core.info(
         `Rebase of head ref '${pull.headRef}' failed. Conflicts must be resolved manually.`
       )
+      // Try to abort any in-progress rebase
+      await this.git.exec(['rebase', '--abort'], true)
     }
 
     return false
