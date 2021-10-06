@@ -19,7 +19,8 @@ export class PullsHelper {
     repository: string,
     head: string,
     headOwner: string,
-    base: string
+    base: string,
+    excludeLabels: string[]
   ): Promise<Pull[]> {
     const [owner, repo] = repository.split('/')
     const params: OctokitTypes.RequestParameters = {
@@ -42,6 +43,11 @@ export class PullsHelper {
               headRepositoryOwner {
                 login
               }
+              labels(first: 100) {
+                nodes {
+                  name
+                }
+              }
               maintainerCanModify
             }
           }
@@ -61,7 +67,12 @@ export class PullsHelper {
             p.node.headRepositoryOwner.login == headOwner) &&
           // Filter heads from forks where 'maintainer can modify' is false
           (p.node.headRepositoryOwner.login == owner ||
-            p.node.maintainerCanModify)
+            p.node.maintainerCanModify) &&
+          // Filter out pull requests with labels in the exclude list
+          p.node.labels.nodes.every(function (value: Label): boolean {
+            // Label is not in the exclude list
+            return !excludeLabels.includes(value.name)
+          })
         ) {
           return new Pull(
             p.node.baseRefName,
@@ -78,6 +89,10 @@ export class PullsHelper {
   }
 }
 
+type Label = {
+  name: string
+}
+
 type Edge = {
   node: {
     baseRefName: string
@@ -88,6 +103,9 @@ type Edge = {
     }
     headRepositoryOwner: {
       login: string
+    }
+    labels: {
+      nodes: Label[]
     }
     maintainerCanModify: boolean
   }

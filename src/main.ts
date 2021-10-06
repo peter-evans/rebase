@@ -8,6 +8,7 @@ import {PullsHelper} from './pulls-helper'
 import {RebaseHelper} from './rebase-helper'
 import {inspect} from 'util'
 import {v4 as uuidv4} from 'uuid'
+import * as utils from './utils'
 
 async function run(): Promise<void> {
   try {
@@ -15,7 +16,8 @@ async function run(): Promise<void> {
       token: core.getInput('token'),
       repository: core.getInput('repository'),
       head: core.getInput('head'),
-      base: core.getInput('base')
+      base: core.getInput('base'),
+      excludeLabels: utils.getInputAsArray('exclude-labels')
     }
     core.debug(`Inputs: ${inspect(inputs)}`)
 
@@ -26,7 +28,8 @@ async function run(): Promise<void> {
       inputs.repository,
       head,
       headOwner,
-      inputs.base
+      inputs.base,
+      inputs.excludeLabels
     )
 
     if (pulls.length > 0) {
