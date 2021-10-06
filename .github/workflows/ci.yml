@@ -81,6 +81,8 @@ jobs:
         with:
           token: ${{ secrets.ACTIONS_BOT_TOKEN }}
           repository: peter-evans/rebase-test-fixture-${{ matrix.target }}
+          exclude-labels: |
+            no-rebase
       - if: steps.rebase3.outputs.rebased-count < 2
         run: exit 1
 

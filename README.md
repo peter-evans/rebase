@@ -45,6 +45,26 @@ jobs:
           base: main
 ```
 
+### Exclude pull requests with specific labels
+
+```yml
+      - uses: peter-evans/rebase@v1
+        with:
+          exclude-labels: |
+            no-rebase
+            dependencies
+```
+
+### Action inputs
+
+| Name | Description | Default |
+| --- | --- | --- |
+| `token` | `GITHUB_TOKEN` or a `repo` scoped [PAT](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token). The `workflow` scope may also be required if rebasing pull requests containing changes to workflows under `.github/workflows`. | `GITHUB_TOKEN` |
+| `repository` | The target GitHub repository containing the pull request. | `github.repository` (Current repository) |
+| `head` | Filter pull requests by head user or head organization and branch name in the format `user:ref-name` or `organization:ref-name`. For example: `github:new-script-format` or `octocat:test-branch`. | |
+| `base` | Filter pull requests by base branch name. Example: `gh-pages`. | |
+| `exclude-labels` | A comma or newline separated list of pull request labels to exclude. | |
+
 ### Rebase slash command
 
 Use the following two workflows and a `repo` scoped [PAT](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) to add a `/rebase` slash command to pull request comments.
@@ -90,15 +110,6 @@ jobs:
           comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
           reaction-type: hooray
 ```
-
-### Action inputs
-
-| Name | Description | Default |
-| --- | --- | --- |
-| `token` | `GITHUB_TOKEN` or a `repo` scoped [PAT](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token). The `workflow` scope may also be required if rebasing pull requests containing changes to workflows under `.github/workflows`. | `GITHUB_TOKEN` |
-| `repository` | The target GitHub repository containing the pull request. | `github.repository` (Current repository) |
-| `head` | Filter pull requests by head user or head organization and branch name in the format `user:ref-name` or `organization:ref-name`. For example: `github:new-script-format` or `octocat:test-branch`. | |
-| `base` | Filter pull requests by base branch name. Example: `gh-pages`. | |
 
 ### Target other repositories
 

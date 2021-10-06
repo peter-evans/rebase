@@ -1,3 +1,4 @@
+import * as core from '@actions/core'
 import * as fs from 'fs'
 
 export function fileExistsSync(path: string): boolean {
@@ -8,7 +9,7 @@ export function fileExistsSync(path: string): boolean {
   let stats: fs.Stats
   try {
     stats = fs.statSync(path)
-  } catch (error) {
+  } catch (error: any) {
     if (error.code === 'ENOENT') {
       return false
     }
@@ -23,4 +24,18 @@ export function fileExistsSync(path: string): boolean {
   }
 
   return false
+}
+
+export function getInputAsArray(
+  name: string,
+  options?: core.InputOptions
+): string[] {
+  return getStringAsArray(core.getInput(name, options))
+}
+
+function getStringAsArray(str: string): string[] {
+  return str
+    .split(/[\n,]+/)
+    .map(s => s.trim())
+    .filter(x => x !== '')
 }
