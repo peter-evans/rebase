@@ -55,6 +55,14 @@ jobs:
             dependencies
 ```
 
+### Exclude pull request forks with head filter
+
+```yml
+      - uses: peter-evans/rebase@v1
+        with:
+          head: 'my-org:*'
+```
+
 ### Action inputs
 
 | Name | Description | Default |
