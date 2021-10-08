@@ -20,7 +20,8 @@ export class PullsHelper {
     head: string,
     headOwner: string,
     base: string,
-    excludeLabels: string[]
+    excludeLabels: string[],
+    excludeDrafts: boolean
   ): Promise<Pull[]> {
     const [owner, repo] = repository.split('/')
     const params: OctokitTypes.RequestParameters = {
@@ -43,6 +44,7 @@ export class PullsHelper {
               headRepositoryOwner {
                 login
               }
+              isDraft
               labels(first: 100) {
                 nodes {
                   name
@@ -72,7 +74,9 @@ export class PullsHelper {
           p.node.labels.nodes.every(function (value: Label): boolean {
             // Label is not in the exclude list
             return !excludeLabels.includes(value.name)
-          })
+          }) &&
+          // Filter out drafts if set to exclude
+          (!excludeDrafts || p.node.isDraft == false)
         ) {
           return new Pull(
             p.node.baseRefName,
@@ -104,6 +108,7 @@ type Edge = {
     headRepositoryOwner: {
       login: string
     }
+    isDraft: boolean
     labels: {
       nodes: Label[]
     }
