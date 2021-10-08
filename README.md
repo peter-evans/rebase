@@ -64,6 +64,7 @@ jobs:
 | `head` | Filter pull requests by head user or head organization and branch name in the format `user:ref-name` or `organization:ref-name`. Use the `*` wildcard match any ref. e.g. `my-org:new-script-format` or `octocat:*`. | |
 | `base` | Filter pull requests by base branch name. Example: `gh-pages`. | |
 | `exclude-labels` | A comma or newline separated list of pull request labels to exclude. | |
+| `exclude-drafts` | Exclude draft pull requests. | `false` |
 
 ### Rebase slash command
 

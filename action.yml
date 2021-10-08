@@ -17,6 +17,9 @@ inputs:
       Example: gh-pages.
   exclude-labels:
     description: 'A comma or newline separated list of pull request labels to exclude'
+  exclude-drafts:
+    description: 'Exclude draft pull requests'
+    default: false
 runs:
   using: 'node12'
   main: 'dist/index.js'

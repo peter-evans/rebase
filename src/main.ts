@@ -17,7 +17,8 @@ async function run(): Promise<void> {
       repository: core.getInput('repository'),
       head: core.getInput('head'),
       base: core.getInput('base'),
-      excludeLabels: utils.getInputAsArray('exclude-labels')
+      excludeLabels: utils.getInputAsArray('exclude-labels'),
+      excludeDrafts: core.getInput('exclude-drafts') === 'true'
     }
     core.debug(`Inputs: ${inspect(inputs)}`)
 
@@ -29,7 +30,8 @@ async function run(): Promise<void> {
       head,
       headOwner,
       inputs.base,
-      inputs.excludeLabels
+      inputs.excludeLabels,
+      inputs.excludeDrafts
     )
 
     if (pulls.length > 0) {
