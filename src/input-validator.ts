@@ -4,7 +4,11 @@ export function parseHead(head: string): string[] {
     if (!headRef) {
       throw `Input 'head' does not conform to the format 'user:ref-name' or 'organization:ref-name'`
     }
-    return [headOwner, headRef]
+    if (headRef == '*') {
+      return [headOwner, '']
+    } else {
+      return [headOwner, headRef]
+    }
   } else {
     return ['', '']
   }
