@@ -61,7 +61,7 @@ jobs:
 | --- | --- | --- |
 | `token` | `GITHUB_TOKEN` or a `repo` scoped [PAT](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token). The `workflow` scope may also be required if rebasing pull requests containing changes to workflows under `.github/workflows`. | `GITHUB_TOKEN` |
 | `repository` | The target GitHub repository containing the pull request. | `github.repository` (Current repository) |
-| `head` | Filter pull requests by head user or head organization and branch name in the format `user:ref-name` or `organization:ref-name`. For example: `github:new-script-format` or `octocat:test-branch`. | |
+| `head` | Filter pull requests by head user or head organization and branch name in the format `user:ref-name` or `organization:ref-name`. Use the `*` wildcard match any ref. e.g. `my-org:new-script-format` or `octocat:*`. | |
 | `base` | Filter pull requests by base branch name. Example: `gh-pages`. | |
 | `exclude-labels` | A comma or newline separated list of pull request labels to exclude. | |
 

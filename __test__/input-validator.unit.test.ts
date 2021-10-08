@@ -5,6 +5,10 @@ describe('input validator tests', () => {
     expect(inputValidator.parseHead('owner:ref')).toEqual(['owner', 'ref'])
   })
 
+  it('successfully parses the head input with wildcard ref', async () => {
+    expect(inputValidator.parseHead('owner:*')).toEqual(['owner', ''])
+  })
+
   it('throws an error when unable to parse the head input', async () => {
     expect(() => {
       inputValidator.parseHead('ref')
