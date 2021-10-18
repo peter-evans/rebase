@@ -15,6 +15,10 @@ inputs:
     description: >
       Filter pull requests by base branch name.
       Example: gh-pages.
+  include-labels:
+    description: >
+      A comma or newline separated list of pull request labels to include.
+      Allows any labels if unspecified.
   exclude-labels:
     description: 'A comma or newline separated list of pull request labels to exclude'
   exclude-drafts:

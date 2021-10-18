@@ -71,6 +71,7 @@ jobs:
 | `repository` | The target GitHub repository containing the pull request. | `github.repository` (Current repository) |
 | `head` | Filter pull requests by head user or head organization and branch name in the format `user:ref-name` or `organization:ref-name`. Use the `*` wildcard match any ref. e.g. `my-org:new-script-format` or `octocat:*`. | |
 | `base` | Filter pull requests by base branch name. Example: `gh-pages`. | |
+| `include-labels` | A comma or newline separated list of pull request labels to include. Allows any labels if unspecified. | |
 | `exclude-labels` | A comma or newline separated list of pull request labels to exclude. | |
 | `exclude-drafts` | Exclude draft pull requests. | `false` |
 

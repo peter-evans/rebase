@@ -20,6 +20,7 @@ export class PullsHelper {
     head: string,
     headOwner: string,
     base: string,
+    includeLabels: string[],
     excludeLabels: string[],
     excludeDrafts: boolean
   ): Promise<Pull[]> {
@@ -70,9 +71,15 @@ export class PullsHelper {
           // Filter heads from forks where 'maintainer can modify' is false
           (p.node.headRepositoryOwner.login == owner ||
             p.node.maintainerCanModify) &&
+          // Filter out pull requests that do not have labels in the include list
+          (includeLabels.length == 0 ||
+            p.node.labels.nodes.some(function (value: Label): boolean {
+              // At least one label is in the include list
+              return includeLabels.includes(value.name)
+            })) &&
           // Filter out pull requests with labels in the exclude list
           p.node.labels.nodes.every(function (value: Label): boolean {
-            // Label is not in the exclude list
+            // Every label is not in the exclude list
             return !excludeLabels.includes(value.name)
           }) &&
           // Filter out drafts if set to exclude
