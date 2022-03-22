@@ -10,7 +10,7 @@ The default behaviour of the action with no configured inputs is to check the cu
 Pull requests from forks are rebaseable only if they [allow edits from maintainers](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/allowing-changes-to-a-pull-request-branch-created-from-a-fork).
 
 ```yml
-      - uses: peter-evans/rebase@v1
+      - uses: peter-evans/rebase@v2
 ```
 
 ### Periodically rebase all pull requests
@@ -26,7 +26,7 @@ jobs:
   rebase:
     runs-on: ubuntu-latest
     steps:
-      - uses: peter-evans/rebase@v1
+      - uses: peter-evans/rebase@v2
 ```
 
 ### Rebase all pull requests on push to the base branch
@@ -40,7 +40,7 @@ jobs:
   rebase:
     runs-on: ubuntu-latest
     steps:
-      - uses: peter-evans/rebase@v1
+      - uses: peter-evans/rebase@v2
         with:
           base: main
 ```
@@ -48,7 +48,7 @@ jobs:
 ### Exclude pull requests with specific labels
 
 ```yml
-      - uses: peter-evans/rebase@v1
+      - uses: peter-evans/rebase@v2
         with:
           exclude-labels: |
             no-rebase
@@ -58,7 +58,7 @@ jobs:
 ### Exclude pull request forks with head filter
 
 ```yml
-      - uses: peter-evans/rebase@v1
+      - uses: peter-evans/rebase@v2
         with:
           head: 'my-org:*'
 ```
@@ -90,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Slash Command Dispatch
-        uses: peter-evans/slash-command-dispatch@v1
+        uses: peter-evans/slash-command-dispatch@v3
         with:
           token: ${{ secrets.PAT }}
           commands: rebase
@@ -107,7 +107,7 @@ jobs:
   rebase:
     runs-on: ubuntu-latest
     steps:
-      - uses: peter-evans/rebase@v1
+      - uses: peter-evans/rebase@v2
         id: rebase
         with:
           head: ${{ github.event.client_payload.pull_request.head.label }}
@@ -140,7 +140,7 @@ jobs:
         repo: ['my-org/repo1', 'my-org/repo2', 'my-org/repo3']
     runs-on: ubuntu-latest
     steps:
-      - uses: peter-evans/rebase@v1
+      - uses: peter-evans/rebase@v2
         with:
           token: ${{ secrets.PAT }}
           repository: ${{ matrix.repo }}
