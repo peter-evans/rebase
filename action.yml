@@ -25,7 +25,7 @@ inputs:
     description: 'Exclude draft pull requests'
     default: false
 runs:
-  using: 'node12'
+  using: 'node16'
   main: 'dist/index.js'
 branding:
   icon: 'git-pull-request'
