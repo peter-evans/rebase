@@ -30,7 +30,7 @@
   },
   "homepage": "https://github.com/peter-evans/rebase",
   "dependencies": {
-    "@actions/core": "^1.3.0",
+    "@actions/core": "^1.9.1",
     "@actions/io": "^1.1.0",
     "@octokit/graphql": "^4.6.2",
     "checkout": "file:src/vendor/checkout",
