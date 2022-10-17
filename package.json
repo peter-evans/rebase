@@ -5,9 +5,9 @@
   "description": "Rebase pull requests in a repository",
   "main": "lib/main.js",
   "scripts": {
-    "vendor": "rm -rf src/vendor/checkout && git clone --depth=1 --branch=v2.3.4 http://github.com/actions/checkout src/vendor/checkout && rm -rf src/vendor/checkout/.git",
+    "vendor": "rm -rf src/vendor/checkout && git clone --depth=1 --branch=v2.5.0 http://github.com/actions/checkout src/vendor/checkout && rm -rf src/vendor/checkout/.git",
     "clean": "rm -rf node_modules package-lock.json",
-    "build-checkout": "npm run build --prefix src/vendor/checkout",
+    "build-checkout": "tsc -p src/vendor/checkout",
     "build": "tsc && ncc build",
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
@@ -30,11 +30,11 @@
   },
   "homepage": "https://github.com/peter-evans/rebase",
   "dependencies": {
-    "@actions/core": "^1.9.1",
-    "@actions/io": "^1.1.0",
-    "@octokit/graphql": "^4.6.2",
+    "@actions/core": "^1.10.0",
+    "@actions/io": "^1.1.2",
+    "@octokit/graphql": "^4.8.0",
     "checkout": "file:src/vendor/checkout",
-    "uuid": "^8.3.2"
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@types/jest": "^26.0.23",

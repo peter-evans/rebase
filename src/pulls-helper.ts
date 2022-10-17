@@ -1,11 +1,10 @@
 import * as core from '@actions/core'
 import {graphql} from '@octokit/graphql'
-import {graphql as Graphql} from '@octokit/graphql/dist-types/types'
 import * as OctokitTypes from '@octokit/types'
 import {inspect} from 'util'
 
 export class PullsHelper {
-  graphqlClient: Graphql
+  graphqlClient: typeof graphql
 
   constructor(token: string) {
     this.graphqlClient = graphql.defaults({
