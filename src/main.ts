@@ -44,7 +44,7 @@ async function run(): Promise<void> {
       process.env['INPUT_PATH'] = path
       process.env['INPUT_FETCH-DEPTH'] = '0'
       process.env['INPUT_PERSIST-CREDENTIALS'] = 'true'
-      const sourceSettings = inputHelper.getInputs()
+      const sourceSettings = await inputHelper.getInputs()
       core.debug(`sourceSettings: ${inspect(sourceSettings)}`)
       await gitSourceProvider.getSource(sourceSettings)
 
