@@ -436,7 +436,7 @@ function run() {
             }
         }
         catch (error) {
-            core.setFailed(error.message);
+            core.setFailed(utils.getErrorMessage(error));
         }
     });
 }
@@ -738,7 +738,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getInputAsArray = exports.fileExistsSync = void 0;
+exports.getErrorMessage = exports.getInputAsArray = exports.fileExistsSync = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const fs = __importStar(__nccwpck_require__(5747));
 function fileExistsSync(path) {
@@ -750,10 +750,10 @@ function fileExistsSync(path) {
         stats = fs.statSync(path);
     }
     catch (error) {
-        if (error.code === 'ENOENT') {
+        if (hasErrorCode(error) && error.code === 'ENOENT') {
             return false;
         }
-        throw new Error(`Encountered an error when checking whether path '${path}' exists: ${error.message}`);
+        throw new Error(`Encountered an error when checking whether path '${path}' exists: ${getErrorMessage(error)}`);
     }
     if (!stats.isDirectory()) {
         return true;
@@ -771,6 +771,16 @@ function getStringAsArray(str) {
         .map(s => s.trim())
         .filter(x => x !== '');
 }
+/* eslint-disable  @typescript-eslint/no-explicit-any */
+function hasErrorCode(error) {
+    return typeof (error && error.code) === 'string';
+}
+function getErrorMessage(error) {
+    if (error instanceof Error)
+        return error.message;
+    return String(error);
+}
+exports.getErrorMessage = getErrorMessage;
 
 
 /***/ }),

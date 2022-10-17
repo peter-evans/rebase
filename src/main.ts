@@ -67,8 +67,8 @@ async function run(): Promise<void> {
     } else {
       core.info('No pull requests found.')
     }
-  } catch (error: any) {
-    core.setFailed(error.message)
+  } catch (error) {
+    core.setFailed(utils.getErrorMessage(error))
   }
 }
 
