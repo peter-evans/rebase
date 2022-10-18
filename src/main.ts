@@ -58,7 +58,7 @@ async function run(): Promise<void> {
         if (result) rebasedCount++
       }
 
-      // Output count of successful rebases
+      // Output count of successful rebases test
       core.setOutput('rebased-count', rebasedCount)
 
       // Delete the repository
