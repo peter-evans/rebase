@@ -1,16 +1,15 @@
 import * as core from '@actions/core'
-import {graphql} from '@octokit/graphql'
+import {Octokit} from '@octokit/core'
 import * as OctokitTypes from '@octokit/types'
 import {inspect} from 'util'
 
 export class PullsHelper {
-  graphqlClient: typeof graphql
+  private octokit: InstanceType<typeof Octokit>
 
   constructor(token: string) {
-    this.graphqlClient = graphql.defaults({
-      headers: {
-        authorization: `token ${token}`
-      }
+    this.octokit = new Octokit({
+      auth: `${token}`,
+      baseUrl: process.env['GITHUB_API_URL'] || 'https://api.github.com'
     })
   }
 
@@ -56,7 +55,7 @@ export class PullsHelper {
         }
       }
     }`
-    const pulls = await this.graphqlClient<Pulls>(query, params)
+    const pulls = await this.octokit.graphql<Pulls>(query, params)
     core.debug(`Pulls: ${inspect(pulls.repository.pullRequests.edges)}`)
 
     const filteredPulls = pulls.repository.pullRequests.edges
