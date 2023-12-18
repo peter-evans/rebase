@@ -25,8 +25,16 @@ on:
 jobs:
   rebase:
     runs-on: ubuntu-latest
+    permissions:  # You will need to set these permissions if you don't use a custom github token
+      # Using permissions will prevent running github actions on rebased branches (as a security to avoid infinite loops)
+      content: write
+      pull-requests: write
     steps:
       - uses: peter-evans/rebase@v2
+        with:
+          # use a custom token instead of permissions
+          # Recommend as this will keep running github actions on rebased branches
+          token: ${{ secrets.PAT }}
 ```
 
 ### Rebase all pull requests on push to the base branch
@@ -42,6 +50,7 @@ jobs:
     steps:
       - uses: peter-evans/rebase@v2
         with:
+          token: ${{ secrets.PAT }}
           base: main
 ```
 
@@ -50,6 +59,7 @@ jobs:
 ```yml
       - uses: peter-evans/rebase@v2
         with:
+          token: ${{ secrets.PAT }}
           exclude-labels: |
             no-rebase
             dependencies
@@ -60,6 +70,7 @@ jobs:
 ```yml
       - uses: peter-evans/rebase@v2
         with:
+          token: ${{ secrets.PAT }}
           head: 'my-org:*'
 ```
 
@@ -110,6 +121,7 @@ jobs:
       - uses: peter-evans/rebase@v2
         id: rebase
         with:
+          token: ${{ secrets.PAT }}
           head: ${{ github.event.client_payload.pull_request.head.label }}
       - name: Add reaction
         if: steps.rebase.outputs.rebased-count == 1
