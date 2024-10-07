@@ -5,9 +5,11 @@ import {v4 as uuidv4} from 'uuid'
 
 export class RebaseHelper {
   private git: GitCommandManager
+  private extraOptions: string[]
 
-  constructor(git: GitCommandManager) {
+  constructor(git: GitCommandManager, options: string[]) {
     this.git = git
+    this.extraOptions = options
   }
 
   async rebase(pull: Pull): Promise<boolean> {
@@ -86,7 +88,11 @@ export class RebaseHelper {
     ref: string
   ): Promise<RebaseResult> {
     try {
-      const result = await this.git.exec(['rebase', `${remoteName}/${ref}`])
+      const result = await this.git.exec([
+        'rebase',
+        ...this.extraOptions,
+        `${remoteName}/${ref}`
+      ])
       return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate
     } catch {
       return RebaseResult.Failed

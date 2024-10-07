@@ -24,6 +24,11 @@ inputs:
   exclude-drafts:
     description: 'Exclude draft pull requests'
     default: false
+  rebase-options:
+    description: >
+      Additional options to pass to the git rebase command.
+      For example, to always prefer "their" code, use "-Xtheirs" ("--strategy-option=theirs").
+      Pass multiple options as a single string separated by commas or newlines.
 runs:
   using: 'node20'
   main: 'dist/index.js'

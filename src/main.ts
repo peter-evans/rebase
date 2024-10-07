@@ -19,7 +19,8 @@ async function run(): Promise<void> {
       base: core.getInput('base'),
       includeLabels: utils.getInputAsArray('include-labels'),
       excludeLabels: utils.getInputAsArray('exclude-labels'),
-      excludeDrafts: core.getInput('exclude-drafts') === 'true'
+      excludeDrafts: core.getInput('exclude-drafts') === 'true',
+      rebaseOptions: utils.getInputAsArray('rebase-options')
     }
     core.debug(`Inputs: ${inspect(inputs)}`)
 
@@ -51,7 +52,7 @@ async function run(): Promise<void> {
       // Rebase
       // Create a git command manager
       const git = await GitCommandManager.create(sourceSettings.repositoryPath)
-      const rebaseHelper = new RebaseHelper(git)
+      const rebaseHelper = new RebaseHelper(git, inputs.rebaseOptions)
       let rebasedCount = 0
       for (const pull of pulls) {
         const result = await rebaseHelper.rebase(pull)
