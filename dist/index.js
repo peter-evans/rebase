@@ -399,7 +399,8 @@ function run() {
                 base: core.getInput('base'),
                 includeLabels: utils.getInputAsArray('include-labels'),
                 excludeLabels: utils.getInputAsArray('exclude-labels'),
-                excludeDrafts: core.getInput('exclude-drafts') === 'true'
+                excludeDrafts: core.getInput('exclude-drafts') === 'true',
+                rebaseOptions: utils.getInputAsArray('rebase-options')
             };
             core.debug(`Inputs: ${(0, util_1.inspect)(inputs)}`);
             const [headOwner, head] = inputValidator.parseHead(inputs.head);
@@ -418,7 +419,7 @@ function run() {
                 // Rebase
                 // Create a git command manager
                 const git = yield git_command_manager_1.GitCommandManager.create(sourceSettings.repositoryPath);
-                const rebaseHelper = new rebase_helper_1.RebaseHelper(git);
+                const rebaseHelper = new rebase_helper_1.RebaseHelper(git, inputs.rebaseOptions);
                 let rebasedCount = 0;
                 for (const pull of pulls) {
                     const result = yield rebaseHelper.rebase(pull);
@@ -625,8 +626,9 @@ exports.RebaseHelper = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const uuid_1 = __nccwpck_require__(5840);
 class RebaseHelper {
-    constructor(git) {
+    constructor(git, options) {
         this.git = git;
+        this.extraOptions = options;
     }
     rebase(pull) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -688,7 +690,11 @@ class RebaseHelper {
     tryRebase(remoteName, ref) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const result = yield this.git.exec(['rebase', `${remoteName}/${ref}`]);
+                const result = yield this.git.exec([
+                    'rebase',
+                    ...this.extraOptions,
+                    `${remoteName}/${ref}`
+                ]);
                 return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate;
             }
             catch (_a) {
