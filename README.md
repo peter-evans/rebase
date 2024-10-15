@@ -74,6 +74,7 @@ jobs:
 | `include-labels` | A comma or newline separated list of pull request labels to include. Allows any labels if unspecified. | |
 | `exclude-labels` | A comma or newline separated list of pull request labels to exclude. | |
 | `exclude-drafts` | Exclude draft pull requests. | `false` |
+| `rebase-options` | A comma or newline separated list of options to pass to the git rebase command. For example, `-Xtheirs`. | |
 
 ### Rebase slash command
 
