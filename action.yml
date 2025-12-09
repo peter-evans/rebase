@@ -27,7 +27,7 @@ inputs:
   rebase-options:
     description: 'A comma or newline separated list of options to pass to the git rebase command. For example, `-Xtheirs`.'
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'dist/index.js'
 branding:
   icon: 'git-pull-request'
