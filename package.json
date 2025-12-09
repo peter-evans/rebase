@@ -1,9 +1,12 @@
 {
   "name": "rebase",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "private": true,
   "description": "Rebase pull requests in a repository",
   "main": "lib/main.js",
+  "engines": {
+    "node": ">=24.4.0"
+  },
   "scripts": {
     "vendor": "rm -rf src/vendor/checkout && git clone --depth=1 --branch=v2.5.0 http://github.com/actions/checkout src/vendor/checkout && rm -rf src/vendor/checkout/.git",
     "clean": "rm -rf node_modules package-lock.json",
