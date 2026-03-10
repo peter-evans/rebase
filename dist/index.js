@@ -400,7 +400,8 @@ function run() {
                 includeLabels: utils.getInputAsArray('include-labels'),
                 excludeLabels: utils.getInputAsArray('exclude-labels'),
                 excludeDrafts: core.getInput('exclude-drafts') === 'true',
-                rebaseOptions: utils.getInputAsArray('rebase-options')
+                rebaseOptions: utils.getInputAsArray('rebase-options'),
+                incrementalPush: core.getInput('incremental-push') === 'true'
             };
             core.debug(`Inputs: ${(0, util_1.inspect)(inputs)}`);
             const [headOwner, head] = inputValidator.parseHead(inputs.head);
@@ -419,7 +420,7 @@ function run() {
                 // Rebase
                 // Create a git command manager
                 const git = yield git_command_manager_1.GitCommandManager.create(sourceSettings.repositoryPath);
-                const rebaseHelper = new rebase_helper_1.RebaseHelper(git, inputs.rebaseOptions);
+                const rebaseHelper = new rebase_helper_1.RebaseHelper(git, inputs.rebaseOptions, inputs.incrementalPush);
                 let rebasedCount = 0;
                 for (const pull of pulls) {
                     const result = yield rebaseHelper.rebase(pull);
@@ -626,9 +627,10 @@ exports.RebaseHelper = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const uuid_1 = __nccwpck_require__(5840);
 class RebaseHelper {
-    constructor(git, options) {
+    constructor(git, options, incrementalPush = false) {
         this.git = git;
         this.extraOptions = options;
+        this.incrementalPush = incrementalPush;
     }
     rebase(pull) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -658,13 +660,31 @@ class RebaseHelper {
             const result = yield this.tryRebase('origin', pull.baseRef);
             core.endGroup();
             if (result == RebaseResult.Rebased) {
-                core.startGroup(`Pushing changes to head ref '${pull.headRef}'`);
-                yield this.git.push([
-                    '--force-with-lease',
-                    remoteName,
-                    `HEAD:${pull.headRef}`
-                ]);
-                core.endGroup();
+                if (this.incrementalPush) {
+                    core.startGroup(`Incrementally pushing commits to head ref '${pull.headRef}'`);
+                    const commitsOutput = yield this.git.revList([`origin/${pull.baseRef}..HEAD`], ['--reverse']);
+                    const commits = commitsOutput.split('\n').filter(c => c.length > 0);
+                    for (let i = 0; i < commits.length; i++) {
+                        yield this.git.push([
+                            '--force-with-lease',
+                            remoteName,
+                            `${commits[i]}:refs/heads/${pull.headRef}`
+                        ]);
+                        if (i < commits.length - 1) {
+                            yield new Promise(resolve => setTimeout(resolve, 5000));
+                        }
+                    }
+                    core.endGroup();
+                }
+                else {
+                    core.startGroup(`Pushing changes to head ref '${pull.headRef}'`);
+                    yield this.git.push([
+                        '--force-with-lease',
+                        remoteName,
+                        `HEAD:${pull.headRef}`
+                    ]);
+                    core.endGroup();
+                }
                 core.info(`Head ref '${pull.headRef}' successfully rebased.`);
                 return true;
             }
