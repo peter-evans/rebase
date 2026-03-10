@@ -6,10 +6,16 @@ import {v4 as uuidv4} from 'uuid'
 export class RebaseHelper {
   private git: GitCommandManager
   private extraOptions: string[]
+  private dropEmptyCommits: boolean
 
-  constructor(git: GitCommandManager, options: string[]) {
+  constructor(
+    git: GitCommandManager,
+    options: string[],
+    dropEmptyCommits: boolean
+  ) {
     this.git = git
     this.extraOptions = options
+    this.dropEmptyCommits = dropEmptyCommits
   }
 
   async rebase(pull: Pull): Promise<boolean> {
@@ -52,6 +58,11 @@ export class RebaseHelper {
     core.endGroup()
 
     if (result == RebaseResult.Rebased) {
+      if (this.dropEmptyCommits) {
+        core.startGroup(`Dropping empty commits from '${pull.headRef}'.`)
+        await this.dropEmpty(`origin/${pull.baseRef}`)
+        core.endGroup()
+      }
       core.startGroup(`Pushing changes to head ref '${pull.headRef}'`)
       await this.git.push([
         '--force-with-lease',
@@ -96,6 +107,51 @@ export class RebaseHelper {
       return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate
     } catch {
       return RebaseResult.Failed
+    }
+  }
+
+  private async dropEmpty(baseRef: string): Promise<void> {
+    // Get all commits between base and HEAD
+    const revListOutput = await this.git.revList([`${baseRef}..HEAD`])
+    if (!revListOutput) return
+
+    const commits = revListOutput.split('\n').filter(s => s.length > 0)
+    const emptyCommits: string[] = []
+
+    for (const sha of commits) {
+      const tree = await this.git.revParse(`${sha}^{tree}`)
+      const parentTree = await this.git.revParse(`${sha}^^{tree}`)
+      if (tree === parentTree) {
+        core.info(`Found empty commit: ${sha}`)
+        emptyCommits.push(sha)
+      }
+    }
+
+    if (emptyCommits.length === 0) {
+      core.info('No empty commits found.')
+      return
+    }
+
+    // Build a sed command to drop the empty commits from the interactive
+    // rebase todo list
+    const sedParts = emptyCommits.map(sha => {
+      const short = sha.substring(0, 7)
+      return `-e s/^pick ${short}/drop ${short}/`
+    })
+    const sedCmd = 'sed ' + sedParts.join(' ')
+
+    // Use GIT_SEQUENCE_EDITOR to non-interactively drop empty commits
+    process.env['GIT_SEQUENCE_EDITOR'] = sedCmd
+    try {
+      await this.git.exec([
+        'rebase',
+        '-i',
+        '--force-rebase',
+        baseRef
+      ])
+      core.info(`Dropped ${emptyCommits.length} empty commit(s).`)
+    } finally {
+      delete process.env['GIT_SEQUENCE_EDITOR']
     }
   }
 }
