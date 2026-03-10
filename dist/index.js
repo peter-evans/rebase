@@ -753,7 +753,7 @@ class RebaseHelper {
                 const short = sha.substring(0, 7);
                 return `-e s/^pick ${short}/drop ${short}/`;
             });
-            const sedCmd = 'sed ' + sedParts.join(' ');
+            const sedCmd = 'sed -i ' + sedParts.join(' ');
             // Use GIT_SEQUENCE_EDITOR to non-interactively drop empty commits
             process.env['GIT_SEQUENCE_EDITOR'] = sedCmd;
             try {
