@@ -626,6 +626,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RebaseHelper = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const uuid_1 = __nccwpck_require__(5840);
+const INCREMENTAL_PUSH_DELAY_MS = 5000;
 class RebaseHelper {
     constructor(git, options, incrementalPush = false) {
         this.git = git;
@@ -664,14 +665,14 @@ class RebaseHelper {
                     core.startGroup(`Incrementally pushing commits to head ref '${pull.headRef}'`);
                     const commitsOutput = yield this.git.revList([`origin/${pull.baseRef}..HEAD`], ['--reverse']);
                     const commits = commitsOutput.split('\n').filter(c => c.length > 0);
-                    for (let i = 0; i < commits.length; i++) {
+                    for (let commitIndex = 0; commitIndex < commits.length; commitIndex++) {
                         yield this.git.push([
                             '--force-with-lease',
                             remoteName,
-                            `${commits[i]}:refs/heads/${pull.headRef}`
+                            `${commits[commitIndex]}:refs/heads/${pull.headRef}`
                         ]);
-                        if (i < commits.length - 1) {
-                            yield new Promise(resolve => setTimeout(resolve, 5000));
+                        if (commitIndex < commits.length - 1) {
+                            yield new Promise(resolve => setTimeout(resolve, INCREMENTAL_PUSH_DELAY_MS));
                         }
                     }
                     core.endGroup();
@@ -715,7 +716,10 @@ class RebaseHelper {
                     ...this.extraOptions,
                     `${remoteName}/${ref}`
                 ]);
-                return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate;
+                return result.stdout.includes('is up to date') ||
+                    result.stderr.includes('is up to date')
+                    ? RebaseResult.AlreadyUpToDate
+                    : RebaseResult.Rebased;
             }
             catch (_a) {
                 return RebaseResult.Failed;

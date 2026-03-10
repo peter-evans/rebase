@@ -125,7 +125,10 @@ export class RebaseHelper {
         ...this.extraOptions,
         `${remoteName}/${ref}`
       ])
-      return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate
+      return result.stdout.includes('is up to date') ||
+        result.stderr.includes('is up to date')
+        ? RebaseResult.AlreadyUpToDate
+        : RebaseResult.Rebased
     } catch {
       return RebaseResult.Failed
     }
