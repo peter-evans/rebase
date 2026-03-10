@@ -677,6 +677,24 @@ class RebaseHelper {
             }
             else if (result == RebaseResult.AlreadyUpToDate) {
                 core.info(`Head ref '${pull.headRef}' is already up to date with the base.`);
+                if (this.dropEmptyCommits) {
+                    core.startGroup(`Dropping empty commits from '${pull.headRef}'.`);
+                    const headBefore = yield this.git.revParse('HEAD');
+                    yield this.dropEmpty(`origin/${pull.baseRef}`);
+                    const headAfter = yield this.git.revParse('HEAD');
+                    core.endGroup();
+                    if (headBefore !== headAfter) {
+                        core.startGroup(`Pushing changes to head ref '${pull.headRef}'`);
+                        yield this.git.push([
+                            '--force-with-lease',
+                            remoteName,
+                            `HEAD:${pull.headRef}`
+                        ]);
+                        core.endGroup();
+                        core.info(`Head ref '${pull.headRef}' updated after dropping empty commits.`);
+                        return true;
+                    }
+                }
             }
             else if (result == RebaseResult.Failed) {
                 core.info(`Rebase of head ref '${pull.headRef}' failed. Conflicts must be resolved manually.`);
