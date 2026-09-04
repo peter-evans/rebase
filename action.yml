@@ -26,6 +26,9 @@ inputs:
     default: false
   rebase-options:
     description: 'A comma or newline separated list of options to pass to the git rebase command. For example, `-Xtheirs`.'
+  drop-empty-commits:
+    description: 'Drop commits that are empty (have no changes compared to their parent). This removes commits that were originally created empty, not just those that become empty during rebase.'
+    default: false
 runs:
   using: 'node24'
   main: 'dist/index.js'
