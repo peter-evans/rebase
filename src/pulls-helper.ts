@@ -29,33 +29,63 @@ export class PullsHelper {
     }
     if (head.length > 0) params.head = head
     if (base.length > 0) params.base = base
-    const query = `query Pulls($owner: String!, $repo: String!, $head: String, $base: String) {
-      repository(owner:$owner, name:$repo) {
-        pullRequests(first: 100, states: OPEN, headRefName: $head, baseRefName: $base) {
-          edges {
-            node {
-              baseRefName
-              headRefName
-              headRepository {
-                nameWithOwner
-                url
-              }
-              headRepositoryOwner {
-                login
-              }
-              isDraft
-              labels(first: 100) {
-                nodes {
-                  name
-                }
-              }
-              maintainerCanModify
-            }
+
+    const pulls: Pulls = {
+      repository: {
+        pullRequests: {
+          edges: [],
+          pageInfo: {
+            hasNextPage: false
           }
         }
       }
-    }`
-    const pulls = await this.octokit.graphql<Pulls>(query, params)
+    }
+    let cursor: string | undefined = undefined
+
+    do {
+      const query = `query Pulls($owner: String!, $repo: String!, $head: String, $base: String, $cursor: String) {
+        repository(owner:$owner, name:$repo) {
+          pullRequests(first: 100, states: OPEN, headRefName: $head, baseRefName: $base, after: $cursor) {
+            edges {
+              cursor
+              node {
+                baseRefName
+                headRefName
+                headRepository {
+                  nameWithOwner
+                  url
+                }
+                headRepositoryOwner {
+                  login
+                }
+                isDraft
+                labels(first: 100) {
+                  nodes {
+                    name
+                  }
+                }
+                maintainerCanModify
+              }
+            }
+            pageInfo {
+              hasNextPage
+            }
+          }
+        }
+      }`
+      params.cursor = cursor
+      const result = await this.octokit.graphql<Pulls>(query, params)
+      pulls.repository.pullRequests.edges.push(
+        ...result.repository.pullRequests.edges
+      )
+      const pageInfo = result.repository.pullRequests.pageInfo
+      cursor = pageInfo.hasNextPage
+        ? result.repository.pullRequests.edges[
+            result.repository.pullRequests.edges.length - 1
+          ].cursor
+        : undefined
+    } while (cursor)
+
     core.debug(`Pulls: ${inspect(pulls.repository.pullRequests.edges)}`)
 
     const filteredPulls = pulls.repository.pullRequests.edges
@@ -103,6 +133,7 @@ type Label = {
 }
 
 type Edge = {
+  cursor: string
   node: {
     baseRefName: string
     headRefName: string
@@ -125,6 +156,9 @@ type Pulls = {
   repository: {
     pullRequests: {
       edges: Edge[]
+      pageInfo: {
+        hasNextPage: boolean
+      }
     }
   }
 }
