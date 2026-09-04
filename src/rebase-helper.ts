@@ -3,13 +3,21 @@ import {GitCommandManager} from './git-command-manager'
 import {Pull} from './pulls-helper'
 import {v4 as uuidv4} from 'uuid'
 
+const INCREMENTAL_PUSH_DELAY_MS = 5000
+
 export class RebaseHelper {
   private git: GitCommandManager
   private extraOptions: string[]
+  private incrementalPush: boolean
 
-  constructor(git: GitCommandManager, options: string[]) {
+  constructor(
+    git: GitCommandManager,
+    options: string[],
+    incrementalPush = false
+  ) {
     this.git = git
     this.extraOptions = options
+    this.incrementalPush = incrementalPush
   }
 
   async rebase(pull: Pull): Promise<boolean> {
@@ -52,13 +60,37 @@ export class RebaseHelper {
     core.endGroup()
 
     if (result == RebaseResult.Rebased) {
-      core.startGroup(`Pushing changes to head ref '${pull.headRef}'`)
-      await this.git.push([
-        '--force-with-lease',
-        remoteName,
-        `HEAD:${pull.headRef}`
-      ])
-      core.endGroup()
+      if (this.incrementalPush) {
+        core.startGroup(
+          `Incrementally pushing commits to head ref '${pull.headRef}'`
+        )
+        const commitsOutput = await this.git.revList(
+          [`origin/${pull.baseRef}..HEAD`],
+          ['--reverse']
+        )
+        const commits = commitsOutput.split('\n').filter(c => c.length > 0)
+        for (let commitIndex = 0; commitIndex < commits.length; commitIndex++) {
+          await this.git.push([
+            '--force-with-lease',
+            remoteName,
+            `${commits[commitIndex]}:refs/heads/${pull.headRef}`
+          ])
+          if (commitIndex < commits.length - 1) {
+            await new Promise(resolve =>
+              setTimeout(resolve, INCREMENTAL_PUSH_DELAY_MS)
+            )
+          }
+        }
+        core.endGroup()
+      } else {
+        core.startGroup(`Pushing changes to head ref '${pull.headRef}'`)
+        await this.git.push([
+          '--force-with-lease',
+          remoteName,
+          `HEAD:${pull.headRef}`
+        ])
+        core.endGroup()
+      }
       core.info(`Head ref '${pull.headRef}' successfully rebased.`)
       return true
     } else if (result == RebaseResult.AlreadyUpToDate) {
@@ -93,7 +125,10 @@ export class RebaseHelper {
         ...this.extraOptions,
         `${remoteName}/${ref}`
       ])
-      return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate
+      return result.stdout.includes('is up to date') ||
+        result.stderr.includes('is up to date')
+        ? RebaseResult.AlreadyUpToDate
+        : RebaseResult.Rebased
     } catch {
       return RebaseResult.Failed
     }
