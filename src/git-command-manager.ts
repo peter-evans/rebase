@@ -269,7 +269,8 @@ export class GitCommandManager {
     const options = {
       cwd: this.workingDirectory,
       env,
-      ignoreReturnCode: allowAllExitCodes,
+      // Non-zero exit codes are handled below so that stderr can be included in the error
+      ignoreReturnCode: true,
       listeners: {
         stdout: (data: Buffer) => {
           stdout.push(data.toString())
@@ -283,6 +284,16 @@ export class GitCommandManager {
     result.exitCode = await exec.exec(`"${this.gitPath}"`, args, options)
     result.stdout = stdout.join('')
     result.stderr = stderr.join('')
+
+    if (result.exitCode !== 0 && !allowAllExitCodes) {
+      const stderrOutput = result.stderr.trim()
+      throw new Error(
+        `The process '${this.gitPath}' failed with exit code ${
+          result.exitCode
+        }${stderrOutput ? `: ${stderrOutput}` : ''}`
+      )
+    }
+
     return result
   }
 }

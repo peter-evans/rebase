@@ -53,21 +53,7 @@ async function run(): Promise<void> {
       // Create a git command manager
       const git = await GitCommandManager.create(sourceSettings.repositoryPath)
       const rebaseHelper = new RebaseHelper(git, inputs.rebaseOptions)
-      let rebasedCount = 0
-      const failedRefs: string[] = []
-      for (const pull of pulls) {
-        try {
-          const result = await rebaseHelper.rebase(pull)
-          if (result) rebasedCount++
-        } catch (error) {
-          failedRefs.push(pull.headRef)
-          core.error(
-            `Failed to rebase '${pull.headRef}': ${utils.getErrorMessage(
-              error
-            )}`
-          )
-        }
-      }
+      const {rebasedCount, failedRefs} = await rebaseHelper.rebaseAll(pulls)
 
       // Output count of successful rebases
       core.setOutput('rebased-count', rebasedCount)

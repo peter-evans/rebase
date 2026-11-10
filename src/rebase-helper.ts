@@ -2,6 +2,7 @@ import * as core from '@actions/core'
 import {GitCommandManager} from './git-command-manager'
 import {Pull} from './pulls-helper'
 import {v4 as uuidv4} from 'uuid'
+import * as utils from './utils'
 
 export class RebaseHelper {
   private git: GitCommandManager
@@ -10,6 +11,24 @@ export class RebaseHelper {
   constructor(git: GitCommandManager, options: string[]) {
     this.git = git
     this.extraOptions = options
+  }
+
+  async rebaseAll(
+    pulls: Pull[]
+  ): Promise<{rebasedCount: number; failedRefs: string[]}> {
+    let rebasedCount = 0
+    const failedRefs: string[] = []
+    for (const pull of pulls) {
+      try {
+        if (await this.rebase(pull)) rebasedCount++
+      } catch (error) {
+        failedRefs.push(pull.headRef)
+        core.error(
+          `Failed to rebase '${pull.headRef}': ${utils.getErrorMessage(error)}`
+        )
+      }
+    }
+    return {rebasedCount, failedRefs}
   }
 
   async rebase(pull: Pull): Promise<boolean> {
@@ -88,16 +107,20 @@ export class RebaseHelper {
     remoteName: string,
     ref: string
   ): Promise<RebaseResult> {
+    const headBefore = await this.git.revParse('HEAD')
     try {
-      const result = await this.git.exec([
+      await this.git.exec([
         'rebase',
         ...this.extraOptions,
         `${remoteName}/${ref}`
       ])
-      return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate
     } catch {
       return RebaseResult.Failed
     }
+    const headAfter = await this.git.revParse('HEAD')
+    return headAfter === headBefore
+      ? RebaseResult.AlreadyUpToDate
+      : RebaseResult.Rebased
   }
 }
 
