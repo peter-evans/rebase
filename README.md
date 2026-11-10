@@ -76,6 +76,14 @@ jobs:
 | `exclude-drafts` | Exclude draft pull requests. | `false` |
 | `rebase-options` | A comma or newline separated list of options to pass to the git rebase command. For example, `-Xtheirs`. | |
 
+### Handling failures
+
+Pull requests that cannot be rebased due to conflicts are skipped and must be rebased manually.
+This does not cause the action to fail.
+
+If any other error occurs for a pull request, such as the push being rejected because the token lacks the `workflow` scope, the error is reported and the action continues with the remaining pull requests.
+The action then fails once all pull requests have been processed.
+
 ### Rebase slash command
 
 Use the following two workflows and a `repo` scoped [PAT](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) to add a `/rebase` slash command to pull request comments.

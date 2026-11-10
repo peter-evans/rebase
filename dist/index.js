@@ -282,7 +282,8 @@ class GitCommandManager {
             const options = {
                 cwd: this.workingDirectory,
                 env,
-                ignoreReturnCode: allowAllExitCodes,
+                // Non-zero exit codes are handled below so that stderr can be included in the error
+                ignoreReturnCode: true,
                 listeners: {
                     stdout: (data) => {
                         stdout.push(data.toString());
@@ -295,6 +296,10 @@ class GitCommandManager {
             result.exitCode = yield exec.exec(`"${this.gitPath}"`, args, options);
             result.stdout = stdout.join('');
             result.stderr = stderr.join('');
+            if (result.exitCode !== 0 && !allowAllExitCodes) {
+                const stderrOutput = result.stderr.trim();
+                throw new Error(`The process '${this.gitPath}' failed with exit code ${result.exitCode}${stderrOutput ? `: ${stderrOutput}` : ''}`);
+            }
             return result;
         });
     }
@@ -420,19 +425,7 @@ function run() {
                 // Create a git command manager
                 const git = yield git_command_manager_1.GitCommandManager.create(sourceSettings.repositoryPath);
                 const rebaseHelper = new rebase_helper_1.RebaseHelper(git, inputs.rebaseOptions);
-                let rebasedCount = 0;
-                const failedRefs = [];
-                for (const pull of pulls) {
-                    try {
-                        const result = yield rebaseHelper.rebase(pull);
-                        if (result)
-                            rebasedCount++;
-                    }
-                    catch (error) {
-                        failedRefs.push(pull.headRef);
-                        core.error(`Failed to rebase '${pull.headRef}': ${utils.getErrorMessage(error)}`);
-                    }
-                }
+                const { rebasedCount, failedRefs } = yield rebaseHelper.rebaseAll(pulls);
                 // Output count of successful rebases
                 core.setOutput('rebased-count', rebasedCount);
                 // Delete the repository
@@ -658,10 +651,28 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RebaseHelper = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const uuid_1 = __nccwpck_require__(5840);
+const utils = __importStar(__nccwpck_require__(918));
 class RebaseHelper {
     constructor(git, options) {
         this.git = git;
         this.extraOptions = options;
+    }
+    rebaseAll(pulls) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let rebasedCount = 0;
+            const failedRefs = [];
+            for (const pull of pulls) {
+                try {
+                    if (yield this.rebase(pull))
+                        rebasedCount++;
+                }
+                catch (error) {
+                    failedRefs.push(pull.headRef);
+                    core.error(`Failed to rebase '${pull.headRef}': ${utils.getErrorMessage(error)}`);
+                }
+            }
+            return { rebasedCount, failedRefs };
+        });
     }
     rebase(pull) {
         return __awaiter(this, void 0, void 0, function* () {
