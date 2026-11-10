@@ -75,6 +75,7 @@ jobs:
 | `exclude-labels` | A comma or newline separated list of pull request labels to exclude. | |
 | `exclude-drafts` | Exclude draft pull requests. | `false` |
 | `rebase-options` | A comma or newline separated list of options to pass to the git rebase command. For example, `-Xtheirs`. | |
+| `incremental-push` | Push rebased commits one at a time, waiting 5 seconds between each push. Useful when combining this action with [sequoia-pgp/fast-forward](https://github.com/sequoia-pgp/fast-forward) to ensure each commit is individually fast-forward verified. | `false` |
 
 ### Rebase slash command
 

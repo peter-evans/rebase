@@ -26,6 +26,9 @@ inputs:
     default: false
   rebase-options:
     description: 'A comma or newline separated list of options to pass to the git rebase command. For example, `-Xtheirs`.'
+  incremental-push:
+    description: 'Push rebased commits one at a time, waiting 5 seconds between each push. Useful when combining with sequoia-pgp/fast-forward.'
+    default: false
 runs:
   using: 'node24'
   main: 'dist/index.js'
