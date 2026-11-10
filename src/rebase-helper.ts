@@ -22,43 +22,44 @@ export class RebaseHelper {
     await this.git.exec(['remote', 'add', remoteName, pull.headRepoUrl])
 
     // Fetch
-    core.startGroup(`Fetching head ref '${pull.headRef}'.`)
-    await this.git.fetch([pull.headRef], remoteName)
-    core.endGroup()
+    await core.group(`Fetching head ref '${pull.headRef}'.`, async () =>
+      this.git.fetch([pull.headRef], remoteName)
+    )
 
     // Checkout
-    core.startGroup(`Checking out head ref '${pull.headRef}'.`)
     const localRef = uuidv4()
-    await this.git.checkout(
-      localRef,
-      `refs/remotes/${remoteName}/${pull.headRef}`
+    await core.group(`Checking out head ref '${pull.headRef}'.`, async () =>
+      this.git.checkout(localRef, `refs/remotes/${remoteName}/${pull.headRef}`)
     )
-    core.endGroup()
 
     // Get/set the committer
-    core.startGroup(
-      `Setting committer to match the last commit on the head ref.`
+    await core.group(
+      `Setting committer to match the last commit on the head ref.`,
+      async () => {
+        const sha = await this.git.revParse('HEAD')
+        const committerName = await this.log1([`--format='%cn'`, sha])
+        const committerEmail = await this.log1([`--format='%ce'`, sha])
+        await this.git.config('user.name', committerName)
+        await this.git.config('user.email', committerEmail)
+      }
     )
-    const sha = await this.git.revParse('HEAD')
-    const committerName = await this.log1([`--format='%cn'`, sha])
-    const committerEmail = await this.log1([`--format='%ce'`, sha])
-    await this.git.config('user.name', committerName)
-    await this.git.config('user.email', committerEmail)
-    core.endGroup()
 
     // Rebase
-    core.startGroup(`Rebasing on base ref '${pull.baseRef}'.`)
-    const result = await this.tryRebase('origin', pull.baseRef)
-    core.endGroup()
+    const result = await core.group(
+      `Rebasing on base ref '${pull.baseRef}'.`,
+      async () => this.tryRebase('origin', pull.baseRef)
+    )
 
     if (result == RebaseResult.Rebased) {
-      core.startGroup(`Pushing changes to head ref '${pull.headRef}'`)
-      await this.git.push([
-        '--force-with-lease',
-        remoteName,
-        `HEAD:${pull.headRef}`
-      ])
-      core.endGroup()
+      await core.group(
+        `Pushing changes to head ref '${pull.headRef}'`,
+        async () =>
+          this.git.push([
+            '--force-with-lease',
+            remoteName,
+            `HEAD:${pull.headRef}`
+          ])
+      )
       core.info(`Head ref '${pull.headRef}' successfully rebased.`)
       return true
     } else if (result == RebaseResult.AlreadyUpToDate) {
