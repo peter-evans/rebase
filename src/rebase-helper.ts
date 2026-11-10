@@ -107,16 +107,20 @@ export class RebaseHelper {
     remoteName: string,
     ref: string
   ): Promise<RebaseResult> {
+    const headBefore = await this.git.revParse('HEAD')
     try {
-      const result = await this.git.exec([
+      await this.git.exec([
         'rebase',
         ...this.extraOptions,
         `${remoteName}/${ref}`
       ])
-      return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate
     } catch {
       return RebaseResult.Failed
     }
+    const headAfter = await this.git.revParse('HEAD')
+    return headAfter === headBefore
+      ? RebaseResult.AlreadyUpToDate
+      : RebaseResult.Rebased
   }
 }
 

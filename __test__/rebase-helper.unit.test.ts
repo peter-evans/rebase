@@ -110,18 +110,20 @@ describe('rebase helper tests', () => {
     fs.rmSync(tempDir, {recursive: true, force: true})
   })
 
+  async function createRebaseHelper(): Promise<RebaseHelper> {
+    return new RebaseHelper(await GitCommandManager.create(workPath), [])
+  }
+
+  function pullsFor(refs: string[]): Pull[] {
+    return refs.map(head => new Pull('main', remotePath, 'owner/repo', head))
+  }
+
   it('continues with the remaining pull requests when a push is rejected', async () => {
     rejectPushesTo('b', 'push rejected by test hook')
     const errorSpy = jest.spyOn(core, 'error').mockImplementation(() => {})
-    const rebaseHelper = new RebaseHelper(
-      await GitCommandManager.create(workPath),
-      []
-    )
-    const pulls = heads.map(
-      head => new Pull('main', remotePath, 'owner/repo', head)
-    )
+    const rebaseHelper = await createRebaseHelper()
 
-    const result = await rebaseHelper.rebaseAll(pulls)
+    const result = await rebaseHelper.rebaseAll(pullsFor(heads))
 
     expect(result).toEqual({rebasedCount: 2, failedRefs: ['b']})
     expect(heads.map(isRebasedOnMain)).toEqual([true, false, true])
@@ -130,5 +132,14 @@ describe('rebase helper tests', () => {
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringMatching(/Failed to rebase 'b'.*push rejected by test hook/s)
     )
+  })
+
+  it('does not count pull requests that are already up to date', async () => {
+    git(tempDir, '--git-dir', remotePath, 'branch', 'up-to-date', 'main')
+    const rebaseHelper = await createRebaseHelper()
+
+    const result = await rebaseHelper.rebaseAll(pullsFor(['a', 'up-to-date']))
+
+    expect(result).toEqual({rebasedCount: 1, failedRefs: []})
   })
 })

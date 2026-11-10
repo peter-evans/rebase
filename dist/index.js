@@ -727,17 +727,21 @@ class RebaseHelper {
     }
     tryRebase(remoteName, ref) {
         return __awaiter(this, void 0, void 0, function* () {
+            const headBefore = yield this.git.revParse('HEAD');
             try {
-                const result = yield this.git.exec([
+                yield this.git.exec([
                     'rebase',
                     ...this.extraOptions,
                     `${remoteName}/${ref}`
                 ]);
-                return result ? RebaseResult.Rebased : RebaseResult.AlreadyUpToDate;
             }
             catch (_a) {
                 return RebaseResult.Failed;
             }
+            const headAfter = yield this.git.revParse('HEAD');
+            return headAfter === headBefore
+                ? RebaseResult.AlreadyUpToDate
+                : RebaseResult.Rebased;
         });
     }
 }
