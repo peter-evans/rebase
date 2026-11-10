@@ -670,34 +670,28 @@ class RebaseHelper {
             const remoteName = (0, uuid_1.v4)();
             yield this.git.exec(['remote', 'add', remoteName, pull.headRepoUrl]);
             // Fetch
-            core.startGroup(`Fetching head ref '${pull.headRef}'.`);
-            yield this.git.fetch([pull.headRef], remoteName);
-            core.endGroup();
+            yield core.group(`Fetching head ref '${pull.headRef}'.`, () => __awaiter(this, void 0, void 0, function* () { return this.git.fetch([pull.headRef], remoteName); }));
             // Checkout
-            core.startGroup(`Checking out head ref '${pull.headRef}'.`);
             const localRef = (0, uuid_1.v4)();
-            yield this.git.checkout(localRef, `refs/remotes/${remoteName}/${pull.headRef}`);
-            core.endGroup();
+            yield core.group(`Checking out head ref '${pull.headRef}'.`, () => __awaiter(this, void 0, void 0, function* () { return this.git.checkout(localRef, `refs/remotes/${remoteName}/${pull.headRef}`); }));
             // Get/set the committer
-            core.startGroup(`Setting committer to match the last commit on the head ref.`);
-            const sha = yield this.git.revParse('HEAD');
-            const committerName = yield this.log1([`--format='%cn'`, sha]);
-            const committerEmail = yield this.log1([`--format='%ce'`, sha]);
-            yield this.git.config('user.name', committerName);
-            yield this.git.config('user.email', committerEmail);
-            core.endGroup();
+            yield core.group(`Setting committer to match the last commit on the head ref.`, () => __awaiter(this, void 0, void 0, function* () {
+                const sha = yield this.git.revParse('HEAD');
+                const committerName = yield this.log1([`--format='%cn'`, sha]);
+                const committerEmail = yield this.log1([`--format='%ce'`, sha]);
+                yield this.git.config('user.name', committerName);
+                yield this.git.config('user.email', committerEmail);
+            }));
             // Rebase
-            core.startGroup(`Rebasing on base ref '${pull.baseRef}'.`);
-            const result = yield this.tryRebase('origin', pull.baseRef);
-            core.endGroup();
+            const result = yield core.group(`Rebasing on base ref '${pull.baseRef}'.`, () => __awaiter(this, void 0, void 0, function* () { return this.tryRebase('origin', pull.baseRef); }));
             if (result == RebaseResult.Rebased) {
-                core.startGroup(`Pushing changes to head ref '${pull.headRef}'`);
-                yield this.git.push([
-                    '--force-with-lease',
-                    remoteName,
-                    `HEAD:${pull.headRef}`
-                ]);
-                core.endGroup();
+                yield core.group(`Pushing changes to head ref '${pull.headRef}'`, () => __awaiter(this, void 0, void 0, function* () {
+                    return this.git.push([
+                        '--force-with-lease',
+                        remoteName,
+                        `HEAD:${pull.headRef}`
+                    ]);
+                }));
                 core.info(`Head ref '${pull.headRef}' successfully rebased.`);
                 return true;
             }
