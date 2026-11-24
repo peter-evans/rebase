@@ -7,7 +7,7 @@ import * as inputValidator from './input-validator'
 import {PullsHelper} from './pulls-helper'
 import {RebaseHelper} from './rebase-helper'
 import {inspect} from 'util'
-import {v4 as uuidv4} from 'uuid'
+import {randomUUID} from 'crypto'
 import * as utils from './utils'
 
 async function run(): Promise<void> {
@@ -41,7 +41,7 @@ async function run(): Promise<void> {
       core.info(`${pulls.length} pull request(s) found.`)
 
       // Checkout
-      const path = uuidv4()
+      const path = randomUUID()
       process.env['INPUT_PATH'] = path
       process.env['INPUT_FETCH-DEPTH'] = '0'
       process.env['INPUT_PERSIST-CREDENTIALS'] = 'true'

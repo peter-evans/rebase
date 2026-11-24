@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import {GitCommandManager} from './git-command-manager'
 import {Pull} from './pulls-helper'
-import {v4 as uuidv4} from 'uuid'
+import {randomUUID} from 'crypto'
 import * as utils from './utils'
 
 export class RebaseHelper {
@@ -37,7 +37,7 @@ export class RebaseHelper {
     )
 
     // Add head remote
-    const remoteName = uuidv4()
+    const remoteName = randomUUID()
     await this.git.exec(['remote', 'add', remoteName, pull.headRepoUrl])
 
     // Fetch
@@ -46,7 +46,7 @@ export class RebaseHelper {
     )
 
     // Checkout
-    const localRef = uuidv4()
+    const localRef = randomUUID()
     await core.group(`Checking out head ref '${pull.headRef}'.`, async () =>
       this.git.checkout(localRef, `refs/remotes/${remoteName}/${pull.headRef}`)
     )
