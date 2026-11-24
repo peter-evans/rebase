@@ -37,7 +37,7 @@
     "@actions/io": "^1.1.2",
     "@octokit/core": "^4.2.4",
     "checkout": "file:src/vendor/checkout",
-    "uuid": "^9.0.0"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@types/jest": "^26.0.23",
